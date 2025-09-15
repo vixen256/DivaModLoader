@@ -18,6 +18,7 @@
     <ClInclude Include="SaveData.h" />
     <ClInclude Include="PvLoader.h" />
     <ClInclude Include="ThumbnailLoader.h" />
+    <ClInclude Include="MoviePlayer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Pch.cpp" />
@@ -35,11 +36,15 @@
     <ClCompile Include="Allocator.cpp" />
     <ClCompile Include="PvLoader.cpp" />
     <ClCompile Include="ThumbnailLoader.cpp" />
+    <ClCompile Include="MoviePlayer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="StrArrayImp.asm" />
     <MASM Include="SaveDataImp.asm" />
     <MASM Include="SpriteLoaderImp.asm" />
     <MASM Include="PvLoaderImp.asm" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="MoviePlayer.hlsl" />
   </ItemGroup>
 </Project>

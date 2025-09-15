@@ -3,6 +3,7 @@
 #include "Context.h"
 #include "SigScan.h"
 #include "Utilities.h"
+#include "MoviePlayer.h"
 
 // Stores the current directory, and reverts it back to the original when it exits the current scope.
 struct CurrentDirectoryGuard
@@ -95,9 +96,10 @@ HOOK(HRESULT, WINAPI, D3D11CreateDeviceAndSwapChain, /* address set in init due 
     if (FAILED(result))
         return result;
 
-    if (!CodeLoader::d3dInitEvents.empty() && ppSwapChain && *ppSwapChain && 
+    if (ppSwapChain && *ppSwapChain && 
         ppDevice && *ppDevice && ppImmediateContext && *ppImmediateContext)
     {
+        MoviePlayer::d3dInit(*ppSwapChain, *ppDevice, *ppImmediateContext);
         CurrentDirectoryGuard guard;
 
         for (auto& event : CodeLoader::d3dInitEvents)
@@ -201,14 +203,11 @@ void CodeLoader::init()
         }
     }
 
-    if (!d3dInitEvents.empty() || !onFrameEvents.empty() || !onResizeEvents.empty())
-    {
-        // load import address manually for RenderDoc compatibility
-        originalD3D11CreateDeviceAndSwapChain =
-            *(D3D11CreateDeviceAndSwapChainDelegate**)readInstrPtr(sigD3D11CreateDeviceAndSwapChain(), 0, 0x6);
+    // load import address manually for RenderDoc compatibility
+    originalD3D11CreateDeviceAndSwapChain =
+        *(D3D11CreateDeviceAndSwapChainDelegate**)readInstrPtr(sigD3D11CreateDeviceAndSwapChain(), 0, 0x6);
 
-        INSTALL_HOOK(D3D11CreateDeviceAndSwapChain);
-    }
+    INSTALL_HOOK(D3D11CreateDeviceAndSwapChain);
 }
 
 // Gets called during WinMain.

@@ -1,0 +1,12 @@
+[submodule "Dependencies/volk"]
+	path = Dependencies/volk
+	url = https://github.com/zeux/volk
+[submodule "Dependencies/dxvk"]
+	path = Dependencies/dxvk
+	url = https://github.com/doitsujin/dxvk
+[submodule "Dependencies/Vulkan-Headers"]
+	path = Dependencies/Vulkan-Headers
+	url = https://github.com/KhronosGroup/Vulkan-Headers
+[submodule "Dependencies/FFmpeg/include/FFmpeg"]
+	path = Dependencies/FFmpeg/include/FFmpeg
+	url = https://git.ffmpeg.org/ffmpeg.git

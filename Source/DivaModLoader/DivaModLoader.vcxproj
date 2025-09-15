@@ -58,7 +58,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\Dependencies\Detours\include;..\..\Dependencies;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\Dependencies\Detours\include;..\..\Dependencies\FFmpeg\include;..\..\Dependencies\FFmpeg\include\FFmpeg;..\..\Dependencies\volk;..\..\Dependencies\dxvk\include\spirv\include;..\..\Dependencies\Vulkan-Headers\include;..\..\Dependencies;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
@@ -68,8 +68,8 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>detours.lib;syelog.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\Dependencies\Detours\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>detours.lib;syelog.lib;avcodec.lib;avformat.lib;avutil.lib;bcrypt.lib;dav1d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\Dependencies\Detours\lib;..\..\Dependencies\FFmpeg\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -80,7 +80,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\Dependencies\Detours\include;..\..\Dependencies;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\Dependencies\Detours\include;..\..\Dependencies\FFmpeg\include;..\..\Dependencies\FFmpeg\include\FFmpeg;..\..\Dependencies\volk;..\..\Dependencies\dxvk\include\spirv\include;..\..\Dependencies\Vulkan-Headers\include;..\..\Dependencies;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>Pch.h</ForcedIncludeFiles>
@@ -95,8 +95,8 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>detours.lib;syelog.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\Dependencies\Detours\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>detours.lib;syelog.lib;avcodec.lib;avformat.lib;avutil.lib;bcrypt.lib;dav1d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\Dependencies\Detours\lib;..\..\Dependencies\FFmpeg\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -107,6 +107,7 @@
     <ClInclude Include="DatabaseLoader.h" />
     <ClInclude Include="FileLoader.h" />
     <ClInclude Include="ModLoader.h" />
+    <ClInclude Include="MoviePlayer.h" />
     <ClInclude Include="Patches.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="SaveData.h" />
@@ -126,6 +127,9 @@
     <ClCompile Include="DatabaseLoader.cpp" />
     <ClCompile Include="FileLoader.cpp" />
     <ClCompile Include="ModLoader.cpp" />
+    <ClCompile Include="MoviePlayer.cpp">
+      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="Patches.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -145,6 +149,19 @@
     <MASM Include="StrArrayImp.asm">
       <FileType>Document</FileType>
     </MASM>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="MoviePlayer.hlsl">
+      <LinkObjects>false</LinkObjects>
+      <Command>fxc /T vs_5_0 /E vs /Fh $(IntDir)%(Filename)_vs.fxh /Vn vs_bytecode /D BT709 /DFULL %(Identity)
+fxc /T ps_5_0 /E ps /Fh $(IntDir)%(Filename)_bt601_full.fxh /Vn bt601_full_bytecode /D BT601 /DFULL %(Identity)
+fxc /T ps_5_0 /E ps /Fh $(IntDir)%(Filename)_bt601_limited.fxh /Vn bt601_limited_bytecode /D BT601 /DLIMITED %(Identity)
+fxc /T ps_5_0 /E ps /Fh $(IntDir)%(Filename)_bt709_full.fxh /Vn bt709_full_bytecode /D BT709 /DFULL %(Identity)
+fxc /T ps_5_0 /E ps /Fh $(IntDir)%(Filename)_bt709_limited.fxh /Vn bt709_limited_bytecode /D BT709 /DLIMITED %(Identity)
+fxc /T ps_5_0 /E ps /Fh $(IntDir)%(Filename)_bt2020_full.fxh /Vn bt2020_full_bytecode /D BT2020 /DFULL %(Identity)
+fxc /T ps_5_0 /E ps /Fh $(IntDir)%(Filename)_bt2020_limited.fxh /Vn bt2020_limited_bytecode /D BT2020 /DLIMITED %(Identity)</Command>
+      <Outputs>$(IntDir)%(Filename)_vs.fxh;$(IntDir)%(Filename)_bt601_full.fxh;$(IntDir)%(Filename)_bt601_limited.fxh;$(IntDir)%(Filename)_bt709_full.fxh;$(IntDir)%(Filename)_bt709_limited.fxh;$(IntDir)%(Filename)_bt2020_full.fxh;$(IntDir)%(Filename)_bt2020_limited.fxh</Outputs>
+    </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -12,6 +12,7 @@
 #include "Utilities.h"
 #include "PvLoader.h"
 #include "ThumbnailLoader.h"
+#include "MoviePlayer.h"
 
 HRESULT(*originalDirectInput8Create)(HINSTANCE, DWORD, REFIID, LPVOID*, LPUNKNOWN);
 extern "C" __declspec(dllexport) HRESULT DirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID* ppvOut, LPUNKNOWN punkOuter)
@@ -70,6 +71,7 @@ void Context::preInit()
     }
 
     INSTALL_HOOK(CrtMain);
+    MoviePlayer::preInit();
 }
 
 void Context::init()
@@ -108,4 +110,5 @@ void Context::postInit()
     CodeLoader::postInit();
     PvLoader::init();
     ThumbnailLoader::init();
+    MoviePlayer::init();
 }
