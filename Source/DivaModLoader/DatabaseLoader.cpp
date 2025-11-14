@@ -50,6 +50,8 @@ std::unordered_map<prj::string, std::optional<prj::string>> filePathCache;
 
 HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 0x5), prj::string& filePath, prj::string* destFilePath)
 {
+    if (*(uint16_t*)filePath.c_str() == *(uint16_t*)"./") filePath = filePath.substr(2);
+
     prj::string filePathCopy = filePath;
     auto cachedResult = filePathCache.find(filePath);
     if (cachedResult != filePathCache.end()) {
@@ -95,6 +97,63 @@ SIG_SCAN
     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 );
 
+void loadFilePathCacheSubDirs(std::string modRomDirectory, const char* subDir) {
+    WIN32_FIND_DATA fd;
+    char buf[MAX_PATH];
+    sprintf(buf, "%s\\%s\\*", modRomDirectory.c_str(), subDir);
+    HANDLE handle = FindFirstFileA(buf, &fd);
+
+    do
+    {
+        if (fd.cFileName[0] == '.') continue;
+
+        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        {
+            sprintf(buf, "%s/%s", subDir, fd.cFileName);
+            loadFilePathCacheSubDirs(modRomDirectory, buf);
+        }
+        else
+        {
+            if (*(uint32_t*)fd.cFileName == *(uint32_t*)"mod_") 
+            {
+                prj::string inPath;
+                inPath += subDir;
+                inPath += "/";
+                inPath += MAGIC;
+                inPath += modRomDirectory;
+                inPath += MAGIC;
+                inPath += (fd.cFileName + 3);
+
+                prj::string outPath;
+                outPath += modRomDirectory;
+                outPath += "/";
+                outPath += subDir;
+                outPath += "/";
+                outPath += fd.cFileName;
+
+                filePathCache.emplace(inPath, outPath);
+            }
+            else
+            {
+                prj::string path;
+                path += modRomDirectory;
+                path += "/";
+                path += subDir;
+                path += "/";
+                path += fd.cFileName;
+
+                prj::string rootPath;
+                rootPath += subDir;
+                rootPath += "/";
+                rootPath += fd.cFileName;
+
+                filePathCache.emplace(path, path);
+                filePathCache.emplace(rootPath, path);
+            }
+        }
+    } while (FindNextFileA(handle, &fd));
+}
+
 void DatabaseLoader::initMdataMgr(const std::vector<std::string>& modRomDirectoryPaths)
 {
     // Get the list address from the lea instruction that loads it.
@@ -112,4 +171,7 @@ void DatabaseLoader::initMdataMgr(const std::vector<std::string>& modRomDirector
 
         list.push_back(path);
     }
+
+    for (auto it = modRomDirectoryPaths.begin(); it != modRomDirectoryPaths.end(); it++)
+        loadFilePathCacheSubDirs(*it, "rom");
 }
