@@ -46,16 +46,40 @@ SIG_SCAN
     "x????xxxx"
 ); // call to function, E8 ?? ?? ?? ??
 
+std::unordered_map<prj::string, std::optional<prj::string>> filePathCache;
+
 HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 0x5), prj::string& filePath, prj::string* destFilePath)
 {
-    if (resolveModDatabaseFilePath(filePath, destFilePath != nullptr ? *destFilePath : filePath))
-    {
-        // Probably should be using GetFileAttributesW, but the game doesn't work with unicode paths anyway.
-        const auto fileAttributes = GetFileAttributesA(destFilePath != nullptr ? destFilePath->c_str() : filePath.c_str());
-        return fileAttributes != INVALID_FILE_ATTRIBUTES && !(fileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+    prj::string filePathCopy = filePath;
+    auto cachedResult = filePathCache.find(filePath);
+    if (cachedResult != filePathCache.end()) {
+        bool result = cachedResult->second.has_value();
+        if (result && destFilePath != nullptr) *destFilePath = cachedResult->second.value();
+        return result;
     }
 
-    return originalResolveFilePath(filePath, destFilePath);
+    bool result;
+    prj::string out;
+    if (resolveModDatabaseFilePath(filePath, out))
+    {
+        // Probably should be using GetFileAttributesW, but the game doesn't work with unicode paths anyway.
+        const auto fileAttributes = GetFileAttributesA(out.c_str());
+        result = fileAttributes != INVALID_FILE_ATTRIBUTES && !(fileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+    }
+    else {
+        result = originalResolveFilePath(filePath, &out);
+    }
+
+    if (destFilePath != nullptr) *destFilePath = out;
+
+    if (result) {
+        filePathCache.emplace(filePathCopy, out);
+    }
+    else {
+        filePathCache.emplace(filePathCopy, std::nullopt);
+    }
+
+    return result;
 }
 
 void DatabaseLoader::init()

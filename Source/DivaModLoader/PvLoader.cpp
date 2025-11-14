@@ -1,5 +1,60 @@
 #include "PvLoader.h"
 #include "SigScan.h"
+#include "Types.h"
+
+SIG_SCAN
+(
+    sigTaskPvDbLoop,
+    0x1404BB290,
+    "\x48\x89\x5C\x24\x10\x48\x89\x74\x24\x18\x48\x89\x7C\x24\x20\x55\x41\x54\x41\x55\x41\x56\x41\x57\x48\x8D\xAC\x24\x70\xFC",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+);
+
+std::list<void*> fileHandlers;
+
+static FUNCTION_PTR(bool, __fastcall, asyncFileLoad, 0x1402A4710, void** fileHandler, const char* file, bool);
+static FUNCTION_PTR(bool, __fastcall, asyncFileLoading, 0x151C03830, void** fileHandler);
+static FUNCTION_PTR(void, __fastcall, freeAsyncFileHandler, 0x1402A4E90, void** fileHandler);
+
+HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task) {
+    auto state = (int*)(task + 0x68);
+    auto paths = (prj::list<prj::string>*)(task + 0x70);
+
+    if (*state == 0)
+    {
+        if (paths->size() > 0)
+        {
+            for (auto it = paths->begin(); it != paths->end(); it++) {
+                void* handler = nullptr;
+                asyncFileLoad(&handler, it->c_str(), false);
+                fileHandlers.push_back(handler);
+            }
+            *state = 1;
+        }
+    }
+    else
+    {
+        while (fileHandlers.size() > 0)
+        {
+            auto handler = fileHandlers.front();
+            if (asyncFileLoading(&handler)) break;
+            *state = 3;
+            *(void**)(task + 0x80) = handler;
+            originalTaskPvDbLoop(task);
+
+            freeAsyncFileHandler(&handler);
+            fileHandlers.pop_front();
+        }
+
+        if (fileHandlers.size() == 0)
+        {
+            paths->clear();
+            *state = 0;
+        }
+    }
+
+    return false;
+}
 
 SIG_SCAN
 (
@@ -137,6 +192,8 @@ SIG_SCAN
 
 void PvLoader::init()
 {
+    INSTALL_HOOK(TaskPvDbLoop);
+
     // Skip if checks that always return true but would access out of bounds data due to large IDs regardless
     WRITE_NOP(sigPvLoaderIfCheck1(), 0xE);
     WRITE_MEMORY(sigPvLoaderIfCheck2(), uint8_t, 0x90, 0x90, 0x90, 0xEB);
