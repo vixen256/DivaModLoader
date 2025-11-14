@@ -44,12 +44,7 @@ HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task) {
 
             freeAsyncFileHandler(&handler);
             fileHandlers.pop_front();
-        }
-
-        if (fileHandlers.size() == 0)
-        {
-            paths->clear();
-            *state = 0;
+            paths->pop_front();
         }
     }
 
