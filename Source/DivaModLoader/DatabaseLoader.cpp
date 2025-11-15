@@ -19,63 +19,52 @@ std::unordered_map<prj::string, std::optional<prj::string>> filePathCache;
 prj::vector<prj::string>* gameRomDirectoryPaths = nullptr;
 uint64_t modRomDirectoryLength;
 
-void loadFilePathCacheSubDirs(std::string modRomDirectory, const char* subDir) {
-    WIN32_FIND_DATA fd;
-    char buf[MAX_PATH];
-    sprintf(buf, "%s\\%s\\*", modRomDirectory.c_str(), subDir);
-    HANDLE handle = FindFirstFileA(buf, &fd);
-    if (handle == INVALID_HANDLE_VALUE) return;
-
-    do
+void loadFilePathCacheSubDirs(std::string modRomDirectory) {
+    for (const auto& file : std::filesystem::recursive_directory_iterator(modRomDirectory))
     {
-        if (fd.cFileName[0] == '.')
+        if (!file.is_regular_file())
             continue;
 
-        if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+        auto dir = file.path().lexically_relative(modRomDirectory).remove_filename().string();
+        auto filename = file.path().filename().string();
+        std::replace(dir.begin(), dir.end(), '\\', '/');
+
+        if (*(uint32_t*)filename.c_str() == *(uint32_t*)"mod_")
         {
-            sprintf(buf, "%s/%s", subDir, fd.cFileName);
-            loadFilePathCacheSubDirs(modRomDirectory, buf);
+            prj::string inPath;
+            inPath += dir;
+            inPath += MAGIC;
+            inPath += modRomDirectory;
+            inPath += MAGIC;
+            inPath += (filename.c_str() + 3);
+            std::transform(inPath.begin(), inPath.end(), inPath.begin(), tolower);
+
+            prj::string outPath;
+            outPath += modRomDirectory;
+            outPath += '/';
+            outPath += dir;
+            outPath += filename;
+
+            filePathCache.emplace(inPath, outPath);
         }
         else
         {
-            if (*(uint32_t*)fd.cFileName == *(uint32_t*)"mod_")
-            {
-                prj::string inPath;
-                inPath += subDir;
-                inPath += "/";
-                inPath += MAGIC;
-                inPath += modRomDirectory;
-                inPath += MAGIC;
-                inPath += (fd.cFileName + 3);
+            prj::string path;
+            path += modRomDirectory;
+            path += '/';
+            path += dir;
+            path += filename;
+            std::transform(path.begin(), path.end(), path.begin(), tolower);
 
-                prj::string outPath;
-                outPath += modRomDirectory;
-                outPath += "/";
-                outPath += subDir;
-                outPath += "/";
-                outPath += fd.cFileName;
+            prj::string rootPath;
+            rootPath += dir;
+            rootPath += filename;
+            std::transform(rootPath.begin(), rootPath.end(), rootPath.begin(), tolower);
 
-                filePathCache.emplace(inPath, outPath);
-            }
-            else
-            {
-                prj::string path;
-                path += modRomDirectory;
-                path += "/";
-                path += subDir;
-                path += "/";
-                path += fd.cFileName;
-
-                prj::string rootPath;
-                rootPath += subDir;
-                rootPath += "/";
-                rootPath += fd.cFileName;
-
-                filePathCache.emplace(path, path);
-                filePathCache.emplace(rootPath, path);
-            }
+            filePathCache.emplace(path, path);
+            filePathCache.emplace(rootPath, path);
         }
-    } while (FindNextFileA(handle, &fd));
+    }
 }
 
 SIG_SCAN
@@ -93,6 +82,7 @@ HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 
         filePathCopy = filePath.substr(2);
     else
         filePathCopy = filePath;
+    std::transform(filePathCopy.begin(), filePathCopy.end(), filePathCopy.begin(), tolower);
 
     auto cachedResult = filePathCache.find(filePathCopy);
     if (cachedResult != filePathCache.end())
@@ -159,7 +149,7 @@ void DatabaseLoader::initMdataMgr(const std::vector<std::string>& modRomDirector
     }
 
     for (auto it = modRomDirectoryPaths.begin(); it != modRomDirectoryPaths.end(); it++)
-        loadFilePathCacheSubDirs(*it, "rom");
+        loadFilePathCacheSubDirs(*it);
 
     gameRomDirectoryPaths = romDirectoryPaths;
     modRomDirectoryLength = modRomDirectoryPaths.size();
