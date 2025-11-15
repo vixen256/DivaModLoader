@@ -19,8 +19,17 @@ static FUNCTION_PTR(void, __fastcall, freeAsyncFileHandler, 0x1402A4E90, void** 
 HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task) {
     auto state = (int*)(task + 0x68);
     auto paths = (prj::list<prj::string>*)(task + 0x70);
+    auto pvData = (prj::list<void*>*)(task + 0x88);
+    auto reset = (bool*)(task + 0xB0);
 
-    if (*state == 0)
+    if (*reset)
+    {
+        paths->clear();
+        pvData->clear();
+        *reset = false;
+        *state = 0;
+    }
+    else if (*state == 0)
     {
         if (paths->size() > 0)
         {
