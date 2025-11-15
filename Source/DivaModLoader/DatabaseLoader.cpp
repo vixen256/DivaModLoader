@@ -15,97 +15,19 @@
 
 constexpr char MAGIC = 0x01;
 
-bool resolveModDatabaseFilePath(const prj::string& filePath, prj::string& destFilePath)
-{
-    const size_t magicIdx0 = filePath.find(MAGIC);
-    if (magicIdx0 == std::string::npos)
-        return false;
-
-    const size_t magicIdx1 = filePath.find(MAGIC, magicIdx0 + 1);
-    if (magicIdx1 == std::string::npos)
-        return false;
-
-    const prj::string left = filePath.substr(0, magicIdx0); // folder
-    const prj::string center = filePath.substr(magicIdx0 + 1, magicIdx1 - magicIdx0 - 1); // mod folder
-    const prj::string right = filePath.substr(magicIdx1 + 1); // file name
-
-    destFilePath = center;
-    destFilePath += "/";
-    destFilePath += left;
-    destFilePath += "mod";
-    destFilePath += right;
-
-    return true;
-}
-
-SIG_SCAN
-(
-    sigResolveFilePath,
-    0x14026745B,
-    "\xE8\xCC\xCC\xCC\xCC\x4C\x8B\x65\xF0", 
-    "x????xxxx"
-); // call to function, E8 ?? ?? ?? ??
-
 std::unordered_map<prj::string, std::optional<prj::string>> filePathCache;
-
-HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 0x5), prj::string& filePath, prj::string* destFilePath)
-{
-    if (*(uint16_t*)filePath.c_str() == *(uint16_t*)"./") filePath = filePath.substr(2);
-
-    prj::string filePathCopy = filePath;
-    auto cachedResult = filePathCache.find(filePath);
-    if (cachedResult != filePathCache.end()) {
-        bool result = cachedResult->second.has_value();
-        if (result && destFilePath != nullptr) *destFilePath = cachedResult->second.value();
-        return result;
-    }
-
-    bool result;
-    prj::string out;
-    if (resolveModDatabaseFilePath(filePath, out))
-    {
-        // Probably should be using GetFileAttributesW, but the game doesn't work with unicode paths anyway.
-        const auto fileAttributes = GetFileAttributesA(out.c_str());
-        result = fileAttributes != INVALID_FILE_ATTRIBUTES && !(fileAttributes & FILE_ATTRIBUTE_DIRECTORY);
-    }
-    else {
-        result = originalResolveFilePath(filePath, &out);
-    }
-
-    if (destFilePath != nullptr) *destFilePath = out;
-
-    if (result) {
-        filePathCache.emplace(filePathCopy, out);
-    }
-    else {
-        filePathCache.emplace(filePathCopy, std::nullopt);
-    }
-
-    return result;
-}
-
-void DatabaseLoader::init()
-{
-    INSTALL_HOOK(ResolveFilePath);
-}
-
-SIG_SCAN
-(
-    sigInitMdataMgr,
-    0x14043E050,
-    "\x48\x89\x5C\x24\x08\x48\x89\x6C\x24\x10\x48\x89\x74\x24\x18\x48\x89\x7C\x24\x20\x41\x54\x41\x56\x41\x57\x48\x83\xEC\x60\x48\x8B\x44",
-    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-);
 
 void loadFilePathCacheSubDirs(std::string modRomDirectory, const char* subDir) {
     WIN32_FIND_DATA fd;
     char buf[MAX_PATH];
     sprintf(buf, "%s\\%s\\*", modRomDirectory.c_str(), subDir);
     HANDLE handle = FindFirstFileA(buf, &fd);
+    if (handle == INVALID_HANDLE_VALUE) return;
 
     do
     {
-        if (fd.cFileName[0] == '.') continue;
+        if (fd.cFileName[0] == '.')
+            continue;
 
         if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
         {
@@ -114,7 +36,7 @@ void loadFilePathCacheSubDirs(std::string modRomDirectory, const char* subDir) {
         }
         else
         {
-            if (*(uint32_t*)fd.cFileName == *(uint32_t*)"mod_") 
+            if (*(uint32_t*)fd.cFileName == *(uint32_t*)"mod_")
             {
                 prj::string inPath;
                 inPath += subDir;
@@ -153,6 +75,57 @@ void loadFilePathCacheSubDirs(std::string modRomDirectory, const char* subDir) {
         }
     } while (FindNextFileA(handle, &fd));
 }
+
+SIG_SCAN
+(
+    sigResolveFilePath,
+    0x14026745B,
+    "\xE8\xCC\xCC\xCC\xCC\x4C\x8B\x65\xF0", 
+    "x????xxxx"
+); // call to function, E8 ?? ?? ?? ??
+
+HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 0x5), prj::string& filePath, prj::string* destFilePath)
+{
+    prj::string filePathCopy;
+    if (*(uint16_t*)filePath.c_str() == *(uint16_t*)"./") filePathCopy = filePath.substr(2);
+    else filePathCopy = filePath;
+    auto cachedResult = filePathCache.find(filePathCopy);
+    if (cachedResult != filePathCache.end())
+    {
+        bool result = cachedResult->second.has_value();
+        if (result && destFilePath != nullptr) *destFilePath = cachedResult->second.value();
+        return result;
+    }
+
+    // Because we cache all mod files, any path with MAGIC cannot exist outside of cache and we can simply skip
+    if (filePath.find(MAGIC) != std::string::npos)
+        return false;
+
+    prj::string out;
+    bool result = originalResolveFilePath(filePath, &out);
+
+    if (destFilePath != nullptr) *destFilePath = out;
+
+    if (result)
+        filePathCache.emplace(filePathCopy, out);
+    else
+        filePathCache.emplace(filePathCopy, std::nullopt);
+
+    return result;
+}
+
+void DatabaseLoader::init()
+{
+    INSTALL_HOOK(ResolveFilePath);
+}
+
+SIG_SCAN
+(
+    sigInitMdataMgr,
+    0x14043E050,
+    "\x48\x89\x5C\x24\x08\x48\x89\x6C\x24\x10\x48\x89\x74\x24\x18\x48\x89\x7C\x24\x20\x41\x54\x41\x56\x41\x57\x48\x83\xEC\x60\x48\x8B\x44",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+);
 
 void DatabaseLoader::initMdataMgr(const std::vector<std::string>& modRomDirectoryPaths)
 {

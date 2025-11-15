@@ -24,11 +24,13 @@ HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task) {
     {
         if (paths->size() > 0)
         {
-            for (auto it = paths->begin(); it != paths->end(); it++) {
+            for (auto it = paths->begin(); it != paths->end(); it++)
+            {
                 void* handler = nullptr;
                 asyncFileLoad(&handler, it->c_str(), false);
                 fileHandlers.push_back(handler);
             }
+
             *state = 1;
         }
     }
@@ -38,6 +40,7 @@ HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task) {
         {
             auto handler = fileHandlers.front();
             if (asyncFileLoading(&handler)) break;
+
             *state = 3;
             *(void**)(task + 0x80) = handler;
             originalTaskPvDbLoop(task);

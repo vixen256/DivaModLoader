@@ -44,7 +44,7 @@ HOOK(void, __fastcall, InitRomDirectoryPaths, sigInitRomDirectoryPaths())
 
     // Insert to the beginning of the game's rom directory paths.
     // The first item in the vector has the highest priority.
-    romDirectoryPaths->insert(romDirectoryPaths->begin(), modRomDirectoryPaths.begin(), modRomDirectoryPaths.end());
+    // romDirectoryPaths->insert(romDirectoryPaths->begin(), modRomDirectoryPaths.begin(), modRomDirectoryPaths.end());
 
     // Initialize mount data manager prefixes for mod databases.
     DatabaseLoader::initMdataMgr(modRomDirectoryPaths);
