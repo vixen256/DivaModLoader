@@ -17,8 +17,7 @@ constexpr char MAGIC = 0x01;
 
 std::unordered_map<prj::string, std::optional<prj::string>> filePathCache;
 prj::vector<prj::string>* gameRomDirectoryPaths = nullptr;
-prj::vector<prj::string> fullRomDirectoryPaths;
-prj::vector<prj::string> vanillaRomDirectoryPaths;
+uint64_t modRomDirectoryLength;
 
 void loadFilePathCacheSubDirs(std::string modRomDirectory, const char* subDir) {
     WIN32_FIND_DATA fd;
@@ -109,9 +108,13 @@ HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 
         return false;
 
     prj::string out;
-    *gameRomDirectoryPaths = vanillaRomDirectoryPaths;
+
+    // Remove modded elements from the *front* of the vector
+    // vec->front = vec->last - desiredSize * sizeof(T)
+    uint64_t oldSize = gameRomDirectoryPaths->size();
+    *(uint64_t*)gameRomDirectoryPaths = *(uint64_t*)((uint64_t)gameRomDirectoryPaths + 0x08) - (oldSize - modRomDirectoryLength) * sizeof(prj::string);
     bool result = originalResolveFilePath(filePath, &out);
-    *gameRomDirectoryPaths = fullRomDirectoryPaths;
+    *(uint64_t*)gameRomDirectoryPaths = *(uint64_t*)((uint64_t)gameRomDirectoryPaths + 0x08) - oldSize * sizeof(prj::string);
 
     if (destFilePath != nullptr)
         *destFilePath = out;
@@ -159,7 +162,5 @@ void DatabaseLoader::initMdataMgr(const std::vector<std::string>& modRomDirector
         loadFilePathCacheSubDirs(*it, "rom");
 
     gameRomDirectoryPaths = romDirectoryPaths;
-    vanillaRomDirectoryPaths = *romDirectoryPaths;
-    romDirectoryPaths->insert(romDirectoryPaths->begin(), modRomDirectoryPaths.begin(), modRomDirectoryPaths.end());
-    fullRomDirectoryPaths = *romDirectoryPaths;
+    modRomDirectoryLength = modRomDirectoryPaths.size();
 }
