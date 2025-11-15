@@ -39,7 +39,8 @@ HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task) {
         while (fileHandlers.size() > 0)
         {
             auto handler = fileHandlers.front();
-            if (asyncFileLoading(&handler)) break;
+            if (asyncFileLoading(&handler))
+                break;
 
             *state = 3;
             *(void**)(task + 0x80) = handler;
