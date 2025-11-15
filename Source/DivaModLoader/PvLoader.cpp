@@ -15,6 +15,7 @@ std::list<void*> fileHandlers;
 static FUNCTION_PTR(bool, __fastcall, asyncFileLoad, 0x1402A4710, void** fileHandler, const char* file, bool);
 static FUNCTION_PTR(bool, __fastcall, asyncFileLoading, 0x151C03830, void** fileHandler);
 static FUNCTION_PTR(void, __fastcall, freeAsyncFileHandler, 0x1402A4E90, void** fileHandler);
+static FUNCTION_PTR(void, __fastcall, clearPvData, 0x14f2b297b, prj::list<void*>* pvData);
 
 HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task) {
     auto state = (int*)(task + 0x68);
@@ -25,7 +26,7 @@ HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task) {
     if (*reset)
     {
         paths->clear();
-        pvData->clear();
+        clearPvData(pvData);
         *reset = false;
         *state = 0;
     }
