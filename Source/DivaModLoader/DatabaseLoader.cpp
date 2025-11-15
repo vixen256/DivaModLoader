@@ -96,7 +96,8 @@ HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 
     if (cachedResult != filePathCache.end())
     {
         bool result = cachedResult->second.has_value();
-        if (result && destFilePath != nullptr) *destFilePath = cachedResult->second.value();
+        if (result && destFilePath != nullptr)
+            *destFilePath = cachedResult->second.value();
         return result;
     }
 
