@@ -15,22 +15,12 @@ std::list<void*> fileHandlers;
 static FUNCTION_PTR(bool, __fastcall, asyncFileLoad, 0x1402A4710, void** fileHandler, const char* file, bool);
 static FUNCTION_PTR(bool, __fastcall, asyncFileLoading, 0x151C03830, void** fileHandler);
 static FUNCTION_PTR(void, __fastcall, freeAsyncFileHandler, 0x1402A4E90, void** fileHandler);
-static FUNCTION_PTR(void, __fastcall, clearPvData, 0x14f2b297b, prj::list<void*>* pvData);
 
 HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task) {
     auto state = (int*)(task + 0x68);
     auto paths = (prj::list<prj::string>*)(task + 0x70);
-    auto pvData = (prj::list<void*>*)(task + 0x88);
-    auto reset = (bool*)(task + 0xB0);
 
-    if (*reset)
-    {
-        paths->clear();
-        clearPvData(pvData);
-        *reset = false;
-        *state = 0;
-    }
-    else if (*state == 0)
+    if (*state == 0)
     {
         if (paths->size() > 0)
         {
@@ -42,6 +32,10 @@ HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task) {
             }
 
             *state = 1;
+        }
+        else
+        {
+            return originalTaskPvDbLoop(task);
         }
     }
     else
@@ -59,6 +53,9 @@ HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task) {
             freeAsyncFileHandler(&handler);
             fileHandlers.pop_front();
             paths->pop_front();
+
+            if (fileHandlers.size() == 0)
+                *state = 0;
         }
     }
 

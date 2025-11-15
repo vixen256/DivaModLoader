@@ -47,7 +47,7 @@ HOOK(void, __fastcall, InitRomDirectoryPaths, sigInitRomDirectoryPaths())
     // romDirectoryPaths->insert(romDirectoryPaths->begin(), modRomDirectoryPaths.begin(), modRomDirectoryPaths.end());
 
     // Initialize mount data manager prefixes for mod databases.
-    DatabaseLoader::initMdataMgr(modRomDirectoryPaths);
+    DatabaseLoader::initMdataMgr(modRomDirectoryPaths, romDirectoryPaths);
 }
 
 std::vector<std::string> ModLoader::modDirectoryPaths;

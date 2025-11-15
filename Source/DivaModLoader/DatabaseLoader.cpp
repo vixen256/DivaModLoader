@@ -16,6 +16,9 @@
 constexpr char MAGIC = 0x01;
 
 std::unordered_map<prj::string, std::optional<prj::string>> filePathCache;
+prj::vector<prj::string>* gameRomDirectoryPaths = nullptr;
+prj::vector<prj::string> fullRomDirectoryPaths;
+prj::vector<prj::string> vanillaRomDirectoryPaths;
 
 void loadFilePathCacheSubDirs(std::string modRomDirectory, const char* subDir) {
     WIN32_FIND_DATA fd;
@@ -106,7 +109,9 @@ HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 
         return false;
 
     prj::string out;
+    *gameRomDirectoryPaths = vanillaRomDirectoryPaths;
     bool result = originalResolveFilePath(filePath, &out);
+    *gameRomDirectoryPaths = fullRomDirectoryPaths;
 
     if (destFilePath != nullptr)
         *destFilePath = out;
@@ -132,7 +137,7 @@ SIG_SCAN
     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 );
 
-void DatabaseLoader::initMdataMgr(const std::vector<std::string>& modRomDirectoryPaths)
+void DatabaseLoader::initMdataMgr(const std::vector<std::string>& modRomDirectoryPaths, prj::vector<prj::string>* romDirectoryPaths)
 {
     // Get the list address from the lea instruction that loads it.
     auto& list = *(prj::list<prj::string>*)readInstrPtr(sigInitMdataMgr(), 0xFE, 0x7);
@@ -152,4 +157,9 @@ void DatabaseLoader::initMdataMgr(const std::vector<std::string>& modRomDirector
 
     for (auto it = modRomDirectoryPaths.begin(); it != modRomDirectoryPaths.end(); it++)
         loadFilePathCacheSubDirs(*it, "rom");
+
+    gameRomDirectoryPaths = romDirectoryPaths;
+    vanillaRomDirectoryPaths = *romDirectoryPaths;
+    romDirectoryPaths->insert(romDirectoryPaths->begin(), modRomDirectoryPaths.begin(), modRomDirectoryPaths.end());
+    fullRomDirectoryPaths = *romDirectoryPaths;
 }
