@@ -87,8 +87,11 @@ SIG_SCAN
 HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 0x5), prj::string& filePath, prj::string* destFilePath)
 {
     prj::string filePathCopy;
-    if (*(uint16_t*)filePath.c_str() == *(uint16_t*)"./") filePathCopy = filePath.substr(2);
-    else filePathCopy = filePath;
+    if (*(uint16_t*)filePath.c_str() == *(uint16_t*)"./")
+        filePathCopy = filePath.substr(2);
+    else
+        filePathCopy = filePath;
+
     auto cachedResult = filePathCache.find(filePathCopy);
     if (cachedResult != filePathCache.end())
     {
