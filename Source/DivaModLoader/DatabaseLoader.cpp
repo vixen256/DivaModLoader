@@ -75,11 +75,8 @@ SIG_SCAN
 
 HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 0x5), prj::string& filePath, prj::string* destFilePath)
 {
-    prj::string filePathCopy;
-    if (*(uint16_t*)filePath.c_str() == *(uint16_t*)"./")
-        filePathCopy = filePath.substr(2);
-    else
-        filePathCopy = filePath;
+    prj::string filePathCopy = std::filesystem::path(filePath).lexically_normal().string().c_str();
+    std::replace(filePathCopy.begin(), filePathCopy.end(), '\\', '/');
     std::transform(filePathCopy.begin(), filePathCopy.end(), filePathCopy.begin(), tolower);
 
     auto cachedResult = filePathCache.find(filePathCopy);
