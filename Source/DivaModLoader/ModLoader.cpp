@@ -47,7 +47,12 @@ HOOK(void, __fastcall, InitRomDirectoryPaths, sigInitRomDirectoryPaths())
     romDirectoryPaths->insert(romDirectoryPaths->begin(), modRomDirectoryPaths.begin(), modRomDirectoryPaths.end());
 
     // Initialize mount data manager prefixes for mod databases.
-    DatabaseLoader::initMdataMgr(modRomDirectoryPaths, romDirectoryPaths);
+    DatabaseLoader::initMdataMgr(modRomDirectoryPaths);
+
+    // Skip modRomDirectory in ResolveFilePath
+    WRITE_MEMORY(0x1402A4450, uint8_t, 0x48, 0x81, 0xC3); // add r/m64, imm32
+    WRITE_MEMORY(0x1402A4453, int32_t, modRomDirectoryPaths.size() * sizeof(prj::string));
+    WRITE_NOP(0x1402A4457, 6); // Disable JE, assume romDirs.size() is always >0
 }
 
 std::vector<std::string> ModLoader::modDirectoryPaths;

@@ -16,8 +16,6 @@
 constexpr char MAGIC = 0x01;
 
 std::unordered_map<prj::string, std::optional<prj::string>> filePathCache;
-prj::vector<prj::string>* gameRomDirectoryPaths = nullptr;
-uint64_t modRomDirectoryLength;
 
 void loadFilePathCacheSubDirs(std::string modRomDirectory) {
     for (const auto& file : std::filesystem::recursive_directory_iterator(modRomDirectory))
@@ -98,13 +96,7 @@ HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 
         return false;
 
     prj::string out;
-
-    // Remove modded elements from the *front* of the vector
-    // vec->front = vec->last - desiredSize * sizeof(T)
-    uint64_t oldSize = gameRomDirectoryPaths->size();
-    *(uint64_t*)gameRomDirectoryPaths = *(uint64_t*)((uint64_t)gameRomDirectoryPaths + 0x08) - (oldSize - modRomDirectoryLength) * sizeof(prj::string);
     bool result = originalResolveFilePath(filePath, &out);
-    *(uint64_t*)gameRomDirectoryPaths = *(uint64_t*)((uint64_t)gameRomDirectoryPaths + 0x08) - oldSize * sizeof(prj::string);
 
     if (destFilePath != nullptr)
         *destFilePath = out;
@@ -130,7 +122,7 @@ SIG_SCAN
     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 );
 
-void DatabaseLoader::initMdataMgr(const std::vector<std::string>& modRomDirectoryPaths, prj::vector<prj::string>* romDirectoryPaths)
+void DatabaseLoader::initMdataMgr(const std::vector<std::string>& modRomDirectoryPaths)
 {
     // Get the list address from the lea instruction that loads it.
     auto& list = *(prj::list<prj::string>*)readInstrPtr(sigInitMdataMgr(), 0xFE, 0x7);
@@ -150,7 +142,4 @@ void DatabaseLoader::initMdataMgr(const std::vector<std::string>& modRomDirector
 
     for (auto it = modRomDirectoryPaths.begin(); it != modRomDirectoryPaths.end(); it++)
         loadFilePathCacheSubDirs(*it);
-
-    gameRomDirectoryPaths = romDirectoryPaths;
-    modRomDirectoryLength = modRomDirectoryPaths.size();
 }
