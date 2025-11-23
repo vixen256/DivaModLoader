@@ -112,8 +112,8 @@ static FUNCTION_PTR(bool, __fastcall, asyncFileLoading, 0x151C03830, void** file
 static FUNCTION_PTR(const void*, __fastcall, asyncFileGetData, 0x151C0EF70, void** fileHandler);
 static FUNCTION_PTR(size_t, __fastcall, asyncFileGetSize, 0x151C7ADA0, void** fileHandler);
 static FUNCTION_PTR(void, __fastcall, freeAsyncFileHandler, 0x1402A4E90, void** fileHandler);
-static FUNCTION_PTR(void, __fastcall, farcParse, 0x1402A0750, void *farc, const void *data, u64 size);
-static FUNCTION_PTR(void, __fastcall, farcGetFile, 0x1402A1020, void *farc, void *buffer, u64 size, i32 fileIndex);
+static FUNCTION_PTR(void, __fastcall, farcParse, 0x1402A0750, void *farc, const void *data, uint64_t size);
+static FUNCTION_PTR(void, __fastcall, farcGetFile, 0x1402A1020, void *farc, void *buffer, uint64_t size, int fileIndex);
 static FUNCTION_PTR(void, __fastcall, freeFarc, 0x1402A0E00, void *farc);
 static FUNCTION_PTR(void, __fastcall, itemTableHandlerParse, 0x1404E8690, void* itemTable, void** fileHandler);
 
@@ -190,8 +190,8 @@ HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, 0x1404E7E60)
 
     for (auto it = farcs.begin (); it != farcs.end (); ++it)
     {
-        freeFarc(farc);
-        operatorDelete(farc);
+        freeFarc(it);
+        operatorDelete(it);
     }
     farcs.clear();
 
