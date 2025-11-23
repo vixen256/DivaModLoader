@@ -127,7 +127,7 @@ HOOK (void, __fastcall, ItemTableHandlerArrayRead, 0x158339FF0)
         char buf[MAX_PATH];
         sprintf(buf, "rom/%schritm_prop.farc", prefix.c_str());
         prj::string path(buf);
-        if (implOfResolveFilePath(&path, &path))
+        if (implOfResolveFilePath(path, &path))
         {
             void* fileHandler = nullptr;
             asyncFileLoad(&fileHandler, path.c_str(), true);
@@ -139,7 +139,7 @@ HOOK (void, __fastcall, ItemTableHandlerArrayRead, 0x158339FF0)
 HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, 0x1404E7E60)
 {
     for (auto it = itmFileHandlers.begin (); it != itmFileHandlers.end (); ++it)
-		if (asyncFileLoading (it))
+		if (asyncFileLoading (&*it))
             return true;
 
     std::vector<void*> farcs;
@@ -147,10 +147,10 @@ HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, 0x1404E7E60)
     {
         void *farc = operatorNew(0x60);
         memset(farc, 0, 0x60);
-        farcParse(farc, asyncFileGetData(it), asyncFileGetSize(it));
+        farcParse(farc, asyncFileGetData(&*it), asyncFileGetSize(&*it));
         farcs.push_back(farc);
 
-        freeAsyncFileHandler(it);
+        freeAsyncFileHandler(&*it);
     }
     itmFileHandlers.clear();
 
@@ -159,17 +159,17 @@ HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, 0x1404E7E60)
         auto ptr = 0x14175B620 + 0x108 * i;
         for (auto it = farcs.begin (); it != farcs.end (); ++it)
         {
-            auto buf  = (void *)nullptr;
-            auto size = 0;
-            auto farcFiles = (prj::vector<void*>*)((uint64_t)it + 0x38);
+            void* buf  = (void*)nullptr;
+            uint64_t size = 0;
+            auto farcFiles = (prj::vector<void*>*)((uint64_t)*it + 0x38);
             for (int i = 0; i < farcFiles->size(); ++i)
             {
-                auto file = farcFiles[i];
+                auto file = farcFiles->at(i);
                 if (strcmp((char*)file, *(char**)(ptr + 0x20)) == 0)
                 {
                     size = *(int*)((uint64_t)file + 0x88);
                     buf = operatorNew(size);
-                    farcGetFile(it, buf, size, i);
+                    farcGetFile(*it, buf, size, i);
                     break;
                 }
             }
@@ -177,7 +177,7 @@ HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, 0x1404E7E60)
                 continue;
 
             void *fakeFileHandlerData[32] = {0};
-            fakeFileHandlerData[27] = (void*)(uint64_t)size;
+            fakeFileHandlerData[27] = (void*)size;
             fakeFileHandlerData[28] = buf;
             void* fakeFileHandler = (void*)&fakeFileHandlerData;
 
@@ -190,8 +190,8 @@ HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, 0x1404E7E60)
 
     for (auto it = farcs.begin (); it != farcs.end (); ++it)
     {
-        freeFarc(it);
-        operatorDelete(it);
+        freeFarc(*it);
+        operatorDelete(*it);
     }
     farcs.clear();
 
