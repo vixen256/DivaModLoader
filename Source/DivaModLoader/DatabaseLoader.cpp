@@ -125,7 +125,7 @@ HOOK (void, __fastcall, ItemTableHandlerArrayRead, 0x158339FF0)
     for (auto it = mdataPrefixes->begin(); it != mdataPrefixes->end(); ++it)
     {
         char buf[MAX_PATH];
-        sprintf(buf, "rom/%schritm_prop.farc", prefix.c_str());
+        sprintf(buf, "rom/%schritm_prop.farc", it->c_str());
         prj::string path(buf);
         if (implOfResolveFilePath(path, &path))
         {
