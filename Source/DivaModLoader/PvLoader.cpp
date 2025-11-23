@@ -15,7 +15,6 @@ std::list<void*> fileHandlers;
 static FUNCTION_PTR(bool, __fastcall, asyncFileLoad, 0x1402A4710, void** fileHandler, const char* file, bool);
 static FUNCTION_PTR(bool, __fastcall, asyncFileLoading, 0x151C03830, void** fileHandler);
 static FUNCTION_PTR(void, __fastcall, freeAsyncFileHandler, 0x1402A4E90, void** fileHandler);
-static FUNCTION_PTR(void, __fastcall, itemTableHandlerParse, 0x1404E8690, void* itemTable, void** fileHandler);
 
 HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task)
 {
@@ -198,28 +197,6 @@ SIG_SCAN
     "xxxxxxxx"
 );
 
-HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, 0x1404E7E60)
-{
-    auto handlers = (prj::list<void**>*)(0x14175B620 + 0x08);
-    for (auto it = handlers->begin (); it != handlers->end (); it++)
-		if (asyncFileLoading (*it))
-            return true;
-
-    for (int i = 0; i < 10; i++)
-    {
-        auto ptr = 0x14175B620 + 0x108 * i;
-        for (auto it = handlers->begin (); it != handlers->end (); it++)
-            itemTableHandlerParse ((void*)ptr, *it);
-        *(bool*)(ptr + 0x18) = true;
-    }
-
-    for (auto it = handlers->begin (); it != handlers->end (); it++)
-        freeAsyncFileHandler(*it);
-    handlers->clear();
-
-    return false;
-}
-
 void PvLoader::init()
 {
     INSTALL_HOOK(TaskPvDbLoop);
@@ -245,8 +222,4 @@ void PvLoader::init()
     WRITE_NOP(reinterpret_cast<uint8_t*>(originalPvLoaderParseStart) + 0xC, 0x3);
     
     WRITE_JUMP(originalPvLoaderParseLoop, implOfPvLoaderParseLoop);
-
-    INSTALL_HOOK(ItemTableHandlerArrayLoad);
-    // Only run item_table_handler::read once
-    WRITE_NOP(0x15833A019, 2);
 }
