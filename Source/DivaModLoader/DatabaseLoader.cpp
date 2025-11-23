@@ -107,7 +107,7 @@ HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 
 }
 
 // both PvLoader and this now have these function ptrs, idk, put them in a header file?
-static FUNCTION_PTR(bool, __fastcall, asyncFileLoad, 0x1402A4710, void** fileHandler, const char* file, bool);
+static FUNCTION_PTR(bool, __fastcall, asyncFileLoad, 0x1402A4710, void** fileHandler, const char* file, int);
 static FUNCTION_PTR(bool, __fastcall, asyncFileLoading, 0x151C03830, void** fileHandler);
 static FUNCTION_PTR(const void*, __fastcall, asyncFileGetData, 0x151C0EF70, void** fileHandler);
 static FUNCTION_PTR(size_t, __fastcall, asyncFileGetSize, 0x151C7ADA0, void** fileHandler);
@@ -130,16 +130,24 @@ HOOK (void, __fastcall, ItemTableHandlerArrayRead, 0x158339FF0)
         if (implOfResolveFilePath(path, &path))
         {
             void* fileHandler = nullptr;
-            asyncFileLoad(&fileHandler, path.c_str(), true);
+            asyncFileLoad(&fileHandler, path.c_str(), 1);
             itmFileHandlers.push_back(fileHandler);
         }
     }
 }
 
+struct FarcFile {
+    char name[128];
+    int offset;
+    int compressedSize;
+    int uncompressedSize;
+    int flags;
+};
+
 HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, 0x1404E7E60)
 {
     for (auto it = itmFileHandlers.begin (); it != itmFileHandlers.end (); ++it)
-		if (asyncFileLoading (&*it))
+        if (asyncFileLoading (&*it))
             return true;
 
     std::vector<void*> farcs;
@@ -159,15 +167,15 @@ HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, 0x1404E7E60)
         auto ptr = 0x14175B620 + 0x108 * i;
         for (auto it = farcs.begin (); it != farcs.end (); ++it)
         {
-            void* buf  = (void*)nullptr;
+            void* buf  = nullptr;
             uint64_t size = 0;
-            auto farcFiles = (prj::vector<void*>*)((uint64_t)*it + 0x38);
+            auto farcFiles = (prj::vector<FarcFile>*)((uint64_t)*it + 0x38);
             for (int i = 0; i < farcFiles->size(); ++i)
             {
                 auto file = farcFiles->at(i);
-                if (strcmp((char*)file, *(char**)(ptr + 0x20)) == 0)
+                if (strcmp(file.name, *(char**)(ptr + 0x20)) == 0)
                 {
-                    size = *(int*)((uint64_t)file + 0x88);
+                    size = file.uncompressedSize;
                     buf = operatorNew(size);
                     farcGetFile(*it, buf, size, i);
                     break;

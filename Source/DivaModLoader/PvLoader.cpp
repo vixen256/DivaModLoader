@@ -12,7 +12,7 @@ SIG_SCAN
 
 std::list<void*> fileHandlers;
 
-static FUNCTION_PTR(bool, __fastcall, asyncFileLoad, 0x1402A4710, void** fileHandler, const char* file, bool);
+static FUNCTION_PTR(bool, __fastcall, asyncFileLoad, 0x1402A4710, void** fileHandler, const char* file, int);
 static FUNCTION_PTR(bool, __fastcall, asyncFileLoading, 0x151C03830, void** fileHandler);
 static FUNCTION_PTR(void, __fastcall, freeAsyncFileHandler, 0x1402A4E90, void** fileHandler);
 
@@ -28,7 +28,7 @@ HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task)
             for (auto it = paths->begin(); it != paths->end(); it++)
             {
                 void* handler = nullptr;
-                asyncFileLoad(&handler, it->c_str(), false);
+                asyncFileLoad(&handler, it->c_str(), 0);
                 fileHandlers.push_back(handler);
             }
 
