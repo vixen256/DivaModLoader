@@ -95,7 +95,7 @@ HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 
     prj::string out;
     bool result = originalResolveFilePath(filePath, &out);
 
-    if (destFilePath != nullptr)
+    if (result && destFilePath != nullptr)
         *destFilePath = out;
 
     if (result)
