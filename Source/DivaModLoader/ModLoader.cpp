@@ -77,12 +77,39 @@ void ModLoader::initMod(const std::filesystem::path& path)
 
     if (toml::array* includeArr = config["include"].as_array())
     {
-        for (auto& includeElem : *includeArr)
-        {
-            const std::string include = includeElem.value_or("");
+        toml::array nodes;
+        for (size_t i = includeArr->size() - 1; i != -1; i--)
+            nodes.push_back(includeArr->at(i));
 
-            if (!include.empty())
-                modDirectoryPaths.push_back(modDirectoryPath + "\\" + include);
+        while (!nodes.empty())
+        {
+            toml::array temp;
+            temp.push_back(nodes.back());
+            nodes.pop_back();
+            toml::node& elem = temp.back();
+
+            if (toml::value<std::string>* include = elem.as_string())
+            {
+                if (!(*include)->empty())
+                    modDirectoryPaths.push_back(modDirectoryPath + "\\" + **include);
+            }
+            else if (toml::table* includeTable = elem.as_table())
+            {
+                const bool enabled = includeTable->at_path("enabled").value_or(true);
+                if (!enabled)
+                    continue;
+
+                if (toml::value<std::string>* include = includeTable->at_path("include").as_string())
+                {
+                    if (!(*include)->empty())
+                        modDirectoryPaths.push_back(modDirectoryPath + "\\" + **include);
+                }
+                else if (toml::array* arr = includeTable->at_path("include").as_array())
+                {
+                    for (size_t i = arr->size() - 1; i != -1; i--)
+                        nodes.push_back(arr->at(i));
+                }
+            }
         }
     }
 
