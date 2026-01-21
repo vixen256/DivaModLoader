@@ -344,7 +344,7 @@ FFmpegPlayer ffmpeg_players[2];
 
 AVPixelFormat
 get_format(AVCodecContext* decoder_ctx, const AVPixelFormat* pixel_formats) {
-    const std::set<AVPixelFormat> known_formats = { vulkan ? AV_PIX_FMT_VULKAN : AV_PIX_FMT_D3D11, AV_PIX_FMT_NV12, AV_PIX_FMT_YUV420P };
+    const std::set<AVPixelFormat> known_formats = { vulkan ? AV_PIX_FMT_VULKAN : AV_PIX_FMT_D3D11, AV_PIX_FMT_YUV420P, AV_PIX_FMT_YUV420P10LE };
     std::set<AVPixelFormat> formats = {};
     while (*pixel_formats != AV_PIX_FMT_NONE) {
         if (known_formats.find(*pixel_formats) != known_formats.end()) formats.insert(*pixel_formats);
@@ -353,8 +353,8 @@ get_format(AVCodecContext* decoder_ctx, const AVPixelFormat* pixel_formats) {
 
     if (decoder_ctx->hw_device_ctx != nullptr && formats.find(AV_PIX_FMT_VULKAN) != formats.end()) return AV_PIX_FMT_VULKAN;
     else if (decoder_ctx->hw_device_ctx != nullptr && formats.find(AV_PIX_FMT_D3D11) != formats.end()) return AV_PIX_FMT_D3D11;
-    else if (formats.find(AV_PIX_FMT_NV12) != formats.end()) return AV_PIX_FMT_NV12;
     else if (formats.find(AV_PIX_FMT_YUV420P) != formats.end()) return AV_PIX_FMT_YUV420P;
+    else if (formats.find(AV_PIX_FMT_YUV420P10LE) != formats.end()) return AV_PIX_FMT_YUV420P10LE;
     else return AV_PIX_FMT_NONE;
 }
 
@@ -562,69 +562,137 @@ HOOK(bool, __fastcall, TaskMovieCtrl, 0x140454890, TaskMovie* movie) {
             break;
         }
 
-        D3D11_TEXTURE2D_DESC desc = {};
-        desc.Width = player->decoder_ctx->width;
-        desc.Height = player->decoder_ctx->height;
-        desc.MipLevels = 1;
-        desc.ArraySize = 1;
-        desc.Format = DXGI_FORMAT_NV12;
-        desc.SampleDesc.Count = 1;
-        desc.SampleDesc.Quality = 0;
-        desc.Usage = D3D11_USAGE_DEFAULT;
-        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        desc.CPUAccessFlags = 0;
+        if (player->decoder_ctx->pix_fmt == AV_PIX_FMT_YUV420P) {
+            D3D11_TEXTURE2D_DESC desc = {};
+            desc.Width = player->decoder_ctx->width;
+            desc.Height = player->decoder_ctx->height;
+            desc.MipLevels = 1;
+            desc.ArraySize = 1;
+            desc.Format = DXGI_FORMAT_NV12;
+            desc.SampleDesc.Count = 1;
+            desc.SampleDesc.Quality = 0;
+            desc.Usage = D3D11_USAGE_DEFAULT;
+            desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+            desc.CPUAccessFlags = 0;
 
-        hr = d3d11Device->CreateTexture2D(&desc, nullptr, &player->nv12_texture);
-        if (FAILED(hr)) {
-            movie->state = TaskMovie::State::Shutdown;
-            player->status = FFmpegPlayer::Status::Shutdown;
-            break;
+            hr = d3d11Device->CreateTexture2D(&desc, nullptr, &player->nv12_texture);
+            if (FAILED(hr)) {
+                movie->state = TaskMovie::State::Shutdown;
+                player->status = FFmpegPlayer::Status::Shutdown;
+                break;
+            }
+
+            desc.Usage = D3D11_USAGE_DYNAMIC;
+            desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+            hr = d3d11Device->CreateTexture2D(&desc, nullptr, &player->staging_nv12_texture);
+            if (FAILED(hr)) {
+                movie->state = TaskMovie::State::Shutdown;
+                player->status = FFmpegPlayer::Status::Shutdown;
+                break;
+            }
+
+            D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+            srv_desc.Format = DXGI_FORMAT_R8_UNORM;
+            srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+            srv_desc.Texture2D.MipLevels = -1;
+            srv_desc.Texture2D.MostDetailedMip = 0;
+
+            hr = d3d11Device->CreateShaderResourceView(player->nv12_texture, &srv_desc, &player->luminance_view);
+            if (FAILED(hr)) {
+                movie->state = TaskMovie::State::Shutdown;
+                player->status = FFmpegPlayer::Status::Shutdown;
+                break;
+            }
+
+            hr = d3d11Device->CreateShaderResourceView(player->staging_nv12_texture, &srv_desc, &player->staging_luminance_view);
+            if (FAILED(hr)) {
+                movie->state = TaskMovie::State::Shutdown;
+                player->status = FFmpegPlayer::Status::Shutdown;
+                break;
+            }
+
+            srv_desc.Format = DXGI_FORMAT_R8G8_UNORM;
+
+            hr = d3d11Device->CreateShaderResourceView(player->nv12_texture, &srv_desc, &player->chrominance_view);
+            if (FAILED(hr)) {
+                movie->state = TaskMovie::State::Shutdown;
+                player->status = FFmpegPlayer::Status::Shutdown;
+                break;
+            }
+
+            hr = d3d11Device->CreateShaderResourceView(player->staging_nv12_texture, &srv_desc, &player->staging_chrominance_view);
+            if (FAILED(hr)) {
+                movie->state = TaskMovie::State::Shutdown;
+                player->status = FFmpegPlayer::Status::Shutdown;
+                break;
+            }
         }
+        else if (player->decoder_ctx->pix_fmt == AV_PIX_FMT_YUV420P10LE) {
+            D3D11_TEXTURE2D_DESC desc = {};
+            desc.Width = player->decoder_ctx->width;
+            desc.Height = player->decoder_ctx->height;
+            desc.MipLevels = 1;
+            desc.ArraySize = 1;
+            desc.Format = DXGI_FORMAT_P010;
+            desc.SampleDesc.Count = 1;
+            desc.SampleDesc.Quality = 0;
+            desc.Usage = D3D11_USAGE_DEFAULT;
+            desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+            desc.CPUAccessFlags = 0;
 
-        desc.Usage = D3D11_USAGE_DYNAMIC;
-        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+            hr = d3d11Device->CreateTexture2D(&desc, nullptr, &player->nv12_texture);
+            if (FAILED(hr)) {
+                movie->state = TaskMovie::State::Shutdown;
+                player->status = FFmpegPlayer::Status::Shutdown;
+                break;
+            }
 
-        hr = d3d11Device->CreateTexture2D(&desc, nullptr, &player->staging_nv12_texture);
-        if (FAILED(hr)) {
-            movie->state = TaskMovie::State::Shutdown;
-            player->status = FFmpegPlayer::Status::Shutdown;
-            break;
-        }
+            desc.Usage = D3D11_USAGE_DYNAMIC;
+            desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
-        D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
-        srv_desc.Format = DXGI_FORMAT_R8_UNORM;
-        srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-        srv_desc.Texture2D.MipLevels = -1;
-        srv_desc.Texture2D.MostDetailedMip = 0;
+            hr = d3d11Device->CreateTexture2D(&desc, nullptr, &player->staging_nv12_texture);
+            if (FAILED(hr)) {
+                movie->state = TaskMovie::State::Shutdown;
+                player->status = FFmpegPlayer::Status::Shutdown;
+                break;
+            }
 
-        hr = d3d11Device->CreateShaderResourceView(player->nv12_texture, &srv_desc, &player->luminance_view);
-        if (FAILED(hr)) {
-            movie->state = TaskMovie::State::Shutdown;
-            player->status = FFmpegPlayer::Status::Shutdown;
-            break;
-        }
+            D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+            srv_desc.Format = DXGI_FORMAT_R16_UNORM;
+            srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+            srv_desc.Texture2D.MipLevels = -1;
+            srv_desc.Texture2D.MostDetailedMip = 0;
 
-        hr = d3d11Device->CreateShaderResourceView(player->staging_nv12_texture, &srv_desc, &player->staging_luminance_view);
-        if (FAILED(hr)) {
-            movie->state = TaskMovie::State::Shutdown;
-            player->status = FFmpegPlayer::Status::Shutdown;
-            break;
-        }
+            hr = d3d11Device->CreateShaderResourceView(player->nv12_texture, &srv_desc, &player->luminance_view);
+            if (FAILED(hr)) {
+                movie->state = TaskMovie::State::Shutdown;
+                player->status = FFmpegPlayer::Status::Shutdown;
+                break;
+            }
 
-        srv_desc.Format = DXGI_FORMAT_R8G8_UNORM;
+            hr = d3d11Device->CreateShaderResourceView(player->staging_nv12_texture, &srv_desc, &player->staging_luminance_view);
+            if (FAILED(hr)) {
+                movie->state = TaskMovie::State::Shutdown;
+                player->status = FFmpegPlayer::Status::Shutdown;
+                break;
+            }
 
-        hr = d3d11Device->CreateShaderResourceView(player->nv12_texture, &srv_desc, &player->chrominance_view);
-        if (FAILED(hr)) {
-            movie->state = TaskMovie::State::Shutdown;
-            player->status = FFmpegPlayer::Status::Shutdown;
-            break;
-        }
+            srv_desc.Format = DXGI_FORMAT_R16G16_UNORM;
 
-        hr = d3d11Device->CreateShaderResourceView(player->staging_nv12_texture, &srv_desc, &player->staging_chrominance_view);
-        if (FAILED(hr)) {
-            movie->state = TaskMovie::State::Shutdown;
-            player->status = FFmpegPlayer::Status::Shutdown;
-            break;
+            hr = d3d11Device->CreateShaderResourceView(player->nv12_texture, &srv_desc, &player->chrominance_view);
+            if (FAILED(hr)) {
+                movie->state = TaskMovie::State::Shutdown;
+                player->status = FFmpegPlayer::Status::Shutdown;
+                break;
+            }
+
+            hr = d3d11Device->CreateShaderResourceView(player->staging_nv12_texture, &srv_desc, &player->staging_chrominance_view);
+            if (FAILED(hr)) {
+                movie->state = TaskMovie::State::Shutdown;
+                player->status = FFmpegPlayer::Status::Shutdown;
+                break;
+            }
         }
 
         player->game_texture = TextureLoadTex2D(0x393939 + movie->index, 6, player->decoder_ctx->width, player->decoder_ctx->height, 0, nullptr, 0, false);
@@ -743,7 +811,7 @@ HOOK(void, __fastcall, TaskMovieDisp, 0x1404549D0, TaskMovie* movie) {
         viewport.TopLeftY = 0;
         viewport.Width = player->decoder_ctx->width;
         viewport.Height = player->decoder_ctx->height;
-        
+
         d3d11DeviceContext->RSSetViewports(1, &viewport);
         d3d11DeviceContext->OMSetRenderTargets(1, &player->render_target, nullptr);
         d3d11DeviceContext->PSSetSamplers(0, 1, &player->sampler);
@@ -807,6 +875,56 @@ HOOK(void, __fastcall, TaskMovieDisp, 0x1404549D0, TaskMovie* movie) {
                 luminance_view->Release();
                 texture->Release();
             }; break;
+            case AV_PIX_FMT_P010LE: {
+                ID3D11Texture2D* texture;
+                ID3D11ShaderResourceView* luminance_view;
+                ID3D11ShaderResourceView* chrominance_view;
+
+                D3D11_TEXTURE2D_DESC1 desc = {};
+                desc.Width = player->decoder_ctx->width;
+                desc.Height = player->decoder_ctx->height;
+                desc.MipLevels = 1;
+                desc.ArraySize = 1;
+                desc.Format = DXGI_FORMAT_P010;
+                desc.SampleDesc.Count = 1;
+                desc.SampleDesc.Quality = 0;
+                desc.Usage = D3D11_USAGE_DEFAULT;
+                desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+                desc.CPUAccessFlags = 0;
+                desc.MiscFlags = 0;
+                desc.TextureLayout = D3D11_TEXTURE_LAYOUT_UNDEFINED;
+
+                HRESULT hr = vkInteropDevice->CreateTexture2DFromVkImage(&desc, vk_frame->img[0], &texture);
+                if (FAILED(hr)) {
+                    break;
+                }
+
+                D3D11_SHADER_RESOURCE_VIEW_DESC srv_desc = {};
+                srv_desc.Format = DXGI_FORMAT_R16_UNORM;
+                srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+                srv_desc.Texture2D.MipLevels = -1;
+                srv_desc.Texture2D.MostDetailedMip = 0;
+
+                hr = d3d11Device->CreateShaderResourceView(texture, &srv_desc, &luminance_view);
+                if (FAILED(hr)) {
+                    break;
+                }
+
+                srv_desc.Format = DXGI_FORMAT_R16G16_UNORM;
+
+                hr = d3d11Device->CreateShaderResourceView(texture, &srv_desc, &chrominance_view);
+                if (FAILED(hr)) {
+                    break;
+                }
+
+                d3d11DeviceContext->PSSetShaderResources(0, 1, &luminance_view);
+                d3d11DeviceContext->PSSetShaderResources(1, 1, &chrominance_view);
+                d3d11DeviceContext->Draw(6, 0);
+
+                chrominance_view->Release();
+                luminance_view->Release();
+                texture->Release();
+            }; break;
             default: {
             }; break;
             }
@@ -817,34 +935,58 @@ HOOK(void, __fastcall, TaskMovieDisp, 0x1404549D0, TaskMovie* movie) {
             d3d11DeviceContext->PSSetShaderResources(1, 1, &player->chrominance_view);
             d3d11DeviceContext->Draw(6, 0);
         }
-        else if (player->frame->format == AV_PIX_FMT_NV12) {
-            D3D11_MAPPED_SUBRESOURCE map;
-            HRESULT hr = d3d11DeviceContext->Map(player->staging_nv12_texture, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
-            if (FAILED(hr)) return;
-
-            for (int i = 0; i < player->frame->height; i++)
-                memcpy((uint8_t*)map.pData + i * map.RowPitch, (uint8_t*)player->frame->data[0] + i * player->frame->linesize[0], player->frame->width);
-            for (int i = 0; i < player->frame->height / 2; i++)
-                memcpy((uint8_t*)map.pData + (i + player->frame->height) * map.RowPitch, (uint8_t*)player->frame->data[1] + i * player->frame->linesize[1], player->frame->width);
-
-            d3d11DeviceContext->Unmap(player->staging_nv12_texture, 0);
-
-            d3d11DeviceContext->PSSetShaderResources(0, 1, &player->staging_luminance_view);
-            d3d11DeviceContext->PSSetShaderResources(1, 1, &player->staging_chrominance_view);
-            d3d11DeviceContext->Draw(6, 0);
-        }
         else if (player->frame->format == AV_PIX_FMT_YUV420P) {
             D3D11_MAPPED_SUBRESOURCE map;
             HRESULT hr = d3d11DeviceContext->Map(player->staging_nv12_texture, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
             if (FAILED(hr)) return;
 
             for (int i = 0; i < player->frame->height; i++)
-                memcpy((uint8_t*)map.pData + i * map.RowPitch, (uint8_t*)player->frame->data[0] + i * player->frame->linesize[0], player->frame->width);
+                memcpy((uint8_t*)map.pData + i * map.RowPitch, (uint8_t*)player->frame->data[0] + i * player->frame->linesize[0], std::min((uint32_t)player->frame->linesize[0], map.RowPitch));
 
+            const __m128i filter = _mm_set_epi8(7, 7 + 8, 6, 6 + 8, 5, 5 + 8, 4, 4 + 8, 3, 3 + 8, 2, 2 + 8, 1, 1 + 8, 0, 0 + 8);
+            for (int i = 0; i < player->frame->height / 2; i++){
+                int u_offset = i * player->frame->linesize[1];
+                int v_offset = i * player->frame->linesize[2];
+                int tex_offset = (i + player->frame->height) * map.RowPitch;
+                for (int j = 0; j < player->frame->width / 8; j++) {
+                    uint64_t u = *(uint64_t*)(player->frame->data[1] + u_offset + j * 8);
+                    uint64_t v = *(uint64_t*)(player->frame->data[2] + u_offset + j * 8);
+                    __m128i data = _mm_set_epi64x(u, v);
+                    __m128i ordered = _mm_shuffle_epi8(data, filter);
+                    _mm_store_si128((__m128i*)((uint8_t*)map.pData + tex_offset + j * 16), ordered);
+                }
+            }
+            d3d11DeviceContext->Unmap(player->staging_nv12_texture, 0);
+
+            d3d11DeviceContext->PSSetShaderResources(0, 1, &player->staging_luminance_view);
+            d3d11DeviceContext->PSSetShaderResources(1, 1, &player->staging_chrominance_view);
+            d3d11DeviceContext->Draw(6, 0);
+        }
+        else if (player->frame->format == AV_PIX_FMT_YUV420P10LE) {
+            D3D11_MAPPED_SUBRESOURCE map;
+            HRESULT hr = d3d11DeviceContext->Map(player->staging_nv12_texture, 0, D3D11_MAP_WRITE_DISCARD, 0, &map);
+            if (FAILED(hr)) return;
+
+            for (int i = 0; i < player->frame->height; i++) {
+                int y_offset = i * player->frame->linesize[0];
+                int tex_offset = i * map.RowPitch;
+                for (int j = 0; j < player->frame->width / 8; j++) {
+                    __m128i data = _mm_load_si128((__m128i*)(player->frame->data[0] + y_offset + j * 16));
+                    _mm_store_si128((__m128i*)((uint8_t*)map.pData + tex_offset + j * 16), _mm_slli_epi16(data, 6));
+                }
+            }
+
+            const __m128i filter = _mm_set_epi8(7, 6, 7 + 8, 6 + 8, 5, 4, 5 + 8, 4 + 8, 3, 2, 3 + 8, 2 + 8, 1, 0, 1 + 8, 0 + 8);
             for (int i = 0; i < player->frame->height / 2; i++) {
-                for (int j = 0; j < player->frame->width / 2; j++) {
-                     *((uint8_t*)map.pData + (i + player->frame->height) * map.RowPitch + j * 2 + 0) = *(player->frame->data[1] + i * player->frame->linesize[1] + j);
-                     *((uint8_t*)map.pData + (i + player->frame->height) * map.RowPitch + j * 2 + 1) = *(player->frame->data[2] + i * player->frame->linesize[2] + j);
+                int u_offset = i * player->frame->linesize[1];
+                int v_offset = i * player->frame->linesize[2];
+                int tex_offset = (i + player->frame->height) * map.RowPitch;
+                for (int j = 0; j < player->frame->width / 8; j++) {
+                    uint64_t u = *(uint64_t*)(player->frame->data[1] + u_offset + j * 8);
+                    uint64_t v = *(uint64_t*)(player->frame->data[2] + u_offset + j * 8);
+                    __m128i data = _mm_set_epi64x(u, v);
+                    __m128i ordered = _mm_shuffle_epi8(_mm_slli_epi16(data, 6), filter);
+                    _mm_store_si128((__m128i*)((uint8_t*)map.pData + tex_offset + j * 16), ordered);
                 }
             }
             d3d11DeviceContext->Unmap(player->staging_nv12_texture, 0);
@@ -1844,6 +1986,7 @@ void MoviePlayer::init() {
             return;
         }
 
+        vulkan = true;
         originalVkCreateInstance = (VkCreateInstanceDelegate*)vkCreateInstance;
         INSTALL_HOOK(VkCreateInstance);
     }
@@ -1864,8 +2007,10 @@ void MoviePlayer::d3dInit(IDXGISwapChain* swapChain, ID3D11Device* device, ID3D1
 
     IDXGIVkInteropDevice1* vkInteropDevice = nullptr;
     d3d11Device->QueryInterface(&vkInteropDevice);
-    if (vkInteropDevice != nullptr && VK_VERSION_MAJOR(vkVersion) >= 1 && VK_VERSION_MINOR(vkVersion) >= 3) {
-        vulkan = true;
+    if (vulkan && vkInteropDevice != nullptr && VK_VERSION_MAJOR(vkVersion) >= 1 && VK_VERSION_MINOR(vkVersion) >= 3) {
         vkInteropDevice->GetVulkanHandles(&vkInstance, &vkPhysDevice, &vkDevice);
+    }
+    else {
+        vulkan = false;
     }
 }
