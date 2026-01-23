@@ -869,7 +869,7 @@ HOOK(void, __fastcall, TaskMovieDisp, 0x1404549D0, TaskMovie* movie) {
 
                 d3d11DeviceContext->PSSetShaderResources(0, 1, &luminance_view);
                 d3d11DeviceContext->PSSetShaderResources(1, 1, &chrominance_view);
-                d3d11DeviceContext->Draw(6, 0);
+                d3d11DeviceContext->Draw(3, 0);
                 
                 chrominance_view->Release();
                 luminance_view->Release();
@@ -919,7 +919,7 @@ HOOK(void, __fastcall, TaskMovieDisp, 0x1404549D0, TaskMovie* movie) {
 
                 d3d11DeviceContext->PSSetShaderResources(0, 1, &luminance_view);
                 d3d11DeviceContext->PSSetShaderResources(1, 1, &chrominance_view);
-                d3d11DeviceContext->Draw(6, 0);
+                d3d11DeviceContext->Draw(3, 0);
 
                 chrominance_view->Release();
                 luminance_view->Release();
@@ -933,7 +933,7 @@ HOOK(void, __fastcall, TaskMovieDisp, 0x1404549D0, TaskMovie* movie) {
             d3d11DeviceContext->CopySubresourceRegion(player->nv12_texture, 0, 0, 0, 0, (ID3D11Texture2D*)player->frame->data[0], (uint32_t)player->frame->data[1], nullptr);
             d3d11DeviceContext->PSSetShaderResources(0, 1, &player->luminance_view);
             d3d11DeviceContext->PSSetShaderResources(1, 1, &player->chrominance_view);
-            d3d11DeviceContext->Draw(6, 0);
+            d3d11DeviceContext->Draw(3, 0);
         }
         else if (player->frame->format == AV_PIX_FMT_YUV420P) {
             D3D11_MAPPED_SUBRESOURCE map;
@@ -960,7 +960,7 @@ HOOK(void, __fastcall, TaskMovieDisp, 0x1404549D0, TaskMovie* movie) {
 
             d3d11DeviceContext->PSSetShaderResources(0, 1, &player->staging_luminance_view);
             d3d11DeviceContext->PSSetShaderResources(1, 1, &player->staging_chrominance_view);
-            d3d11DeviceContext->Draw(6, 0);
+            d3d11DeviceContext->Draw(3, 0);
         }
         else if (player->frame->format == AV_PIX_FMT_YUV420P10LE) {
             D3D11_MAPPED_SUBRESOURCE map;
@@ -993,7 +993,7 @@ HOOK(void, __fastcall, TaskMovieDisp, 0x1404549D0, TaskMovie* movie) {
 
             d3d11DeviceContext->PSSetShaderResources(0, 1, &player->staging_luminance_view);
             d3d11DeviceContext->PSSetShaderResources(1, 1, &player->staging_chrominance_view);
-            d3d11DeviceContext->Draw(6, 0);
+            d3d11DeviceContext->Draw(3, 0);
         }
         player->frame_updated = false;
     }
