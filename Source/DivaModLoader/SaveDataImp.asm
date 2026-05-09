@@ -2,7 +2,7 @@
 
 .code
 
-?findOrCreateScoreImp@@YAPEAUScore@@PEAUScore@@H@Z proto
+?findOrCreateScoreImp@@YAPEAUScore@@PEAU1@H@Z proto
 
 ?implOfFindOrCreateScore@@YAPEAUScore@@PEAXI@Z:
     push rbx
@@ -23,7 +23,7 @@
     sub rsp, 20h
     and rsp, 0FFFFFFFFFFFFFFF0h
 
-    call ?findOrCreateScoreImp@@YAPEAUScore@@PEAUScore@@H@Z
+    call ?findOrCreateScoreImp@@YAPEAUScore@@PEAU1@H@Z
     mov rsp, r15
 
     pop r15
