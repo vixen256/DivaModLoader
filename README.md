@@ -47,7 +47,10 @@ Each mod contains a **config.toml** file located within the mod directory.
 
 ```toml
 enabled = true
-include = ["."]
+include = [
+    ".",
+    { enabled = false, include = "optional", name = "Extra optional things" }
+]
 dll = ["TemplateMod.dll"]
 
 name = "Template Mod"
