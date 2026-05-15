@@ -285,9 +285,11 @@ HOOK(CstmItem*, __fastcall, FindCstmItemGallery, sigFindCstmItemGallery(), void*
 
 extern uint8_t EMPTY_SCORE_DATA[];
 
-Score* findOrCreateScoreImp(void* A1, int32_t pvId)
+std::set<uint32_t> BASE_SONGS = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 79, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 101, 102, 103, 104, 201, 202, 203, 204, 205, 206, 208, 209, 210, 211, 212, 213, 214, 215, 216, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 231, 232, 233, 234, 235, 236, 238, 239, 240, 241, 242, 243, 244, 246, 247, 248, 249, 250, 251, 253, 254, 255, 257, 259, 260, 261, 262, 263, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279, 280, 281, 401, 402, 403, 404, 405, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 421, 422, 423, 424, 425, 426, 427, 428, 429, 430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 600, 601, 602, 603, 604, 605, 607, 608, 609, 610, 611, 612, 613, 614, 615, 616, 617, 618, 619, 620, 621, 622, 623, 624, 625, 626, 627, 628, 629, 630, 631, 637, 638, 639, 640, 641, 642, 700, 701, 710, 722, 723, 724, 725, 726, 727, 728, 729, 730, 731, 732, 733, 734, 736, 737, 738, 739, 740, 832, 999};
+
+Score* findOrCreateScoreImp(Score* A1, int32_t pvId)
 {
-    if (pvId >= 0)
+    if (pvId >= 0 && BASE_SONGS.find(pvId) == BASE_SONGS.end())
     {
         const auto result = scoreMap.find(pvId);
         if (result != scoreMap.end())
@@ -298,9 +300,38 @@ Score* findOrCreateScoreImp(void* A1, int32_t pvId)
 
     if (result == nullptr && pvId >= 0)
     {
-        result = &scoreMap[pvId];
-        memcpy(result, EMPTY_SCORE_DATA, sizeof(Score));
-        result->pvId = pvId;
+        // Don't put any base game songs into DML save
+        if (BASE_SONGS.find(pvId) != BASE_SONGS.end())
+        {
+            // Doesn't need special accounting for SLP/Eden, will always be able to find a non-base slot within 300
+            for (uint32_t i = 0; i < 300; i++)
+            {
+                if (BASE_SONGS.find(A1[i].pvId) == BASE_SONGS.end())
+                {
+                    result = &A1[i];
+                    memcpy(&scoreMap[result->pvId], result, sizeof(Score));
+
+                    const auto old = scoreMap.find(pvId);
+                    if (old != scoreMap.end())
+                    {
+                        memcpy(result, &old->second, sizeof(Score));
+                        scoreMap.erase(old);
+                    }
+                    else
+                    {
+                        memcpy(result, EMPTY_SCORE_DATA, sizeof(Score));
+                        result->pvId = pvId;
+                    }
+                    break;
+                }
+            }
+        }
+        else
+        {
+            result = &scoreMap[pvId];
+            memcpy(result, EMPTY_SCORE_DATA, sizeof(Score));
+            result->pvId = pvId;
+        }
     }
 
     return result;
