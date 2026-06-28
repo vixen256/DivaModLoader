@@ -51,7 +51,7 @@ HOOK(void, __fastcall, InitRomDirectoryPaths, sigInitRomDirectoryPaths())
 }
 
 std::vector<std::string> ModLoader::modDirectoryPaths;
-std::unordered_set<std::string> modNames;
+std::set<std::string> modNames;
 
 void ModLoader::initMod(const std::filesystem::path& path)
 {
