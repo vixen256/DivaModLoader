@@ -108,7 +108,7 @@ void ModLoader::initMod(const std::filesystem::path& path)
                         if (!name || (*name)->empty())
                             continue;
 
-                        if (modNames.find(**name) == modsNames.end())
+                        if (modNames.find(**name) == modNames.end())
                         {
                             enabled = false;
                             break;
@@ -124,7 +124,7 @@ void ModLoader::initMod(const std::filesystem::path& path)
                         if (!name || (*name)->empty())
                             continue;
 
-                        if (modNames.find(**name) != modsNames.end())
+                        if (modNames.find(**name) != modNames.end())
                         {
                             enabled = false;
                             break;
