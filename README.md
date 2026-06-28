@@ -49,7 +49,7 @@ Each mod contains a **config.toml** file located within the mod directory.
 enabled = true
 include = [
     ".",
-    { enabled = false, include = "optional", name = "Extra optional things" }
+    { enabled = true, requires = ["Required dependency"], conflicts = ["Conflicting mod"], include = "optional", name = "Extra optional things" }
 ]
 dll = ["TemplateMod.dll"]
 

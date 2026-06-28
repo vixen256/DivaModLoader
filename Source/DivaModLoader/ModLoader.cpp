@@ -51,6 +51,7 @@ HOOK(void, __fastcall, InitRomDirectoryPaths, sigInitRomDirectoryPaths())
 }
 
 std::vector<std::string> ModLoader::modDirectoryPaths;
+std::unordered_set<std::string> modNames;
 
 void ModLoader::initMod(const std::filesystem::path& path)
 {
@@ -73,7 +74,9 @@ void ModLoader::initMod(const std::filesystem::path& path)
     if (!config["enabled"].value_or(true))
         return;
 
-    LOG(" - %s", config["name"].value_or(path.filename().string().c_str()))
+    const std::string modName = config["name"].value_or(path.filename().string());
+    modNames.insert(modName);
+    LOG(" - %s", modName.c_str())
 
     if (toml::array* includeArr = config["include"].as_array())
     {
@@ -95,9 +98,51 @@ void ModLoader::initMod(const std::filesystem::path& path)
             }
             else if (toml::table* includeTable = elem.as_table())
             {
-                const bool enabled = includeTable->at_path("enabled").value_or(true);
+                bool enabled = includeTable->at_path("enabled").value_or(true);
+
+                if (toml::array* arr = includeTable->at_path("requires").as_array())
+                {
+                    for (size_t i = arr->size() - 1; i != -1; i--)
+                    {
+                        toml::value<std::string>* name = arr->at(i).as_string();
+                        if (!name || (*name)->empty())
+                            continue;
+
+                        if (modNames.find(**name) == modsNames.end())
+                        {
+                            enabled = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (toml::array* arr = includeTable->at_path("conflicts").as_array())
+                {
+                    for (size_t i = arr->size() - 1; i != -1; i--)
+                    {
+                        toml::value<std::string>* name = arr->at(i).as_string();
+                        if (!name || (*name)->empty())
+                            continue;
+
+                        if (modNames.find(**name) != modsNames.end())
+                        {
+                            enabled = false;
+                            break;
+                        }
+                    }
+                }
+
                 if (!enabled)
                     continue;
+
+                if (toml::value<std::string>* name = includeTable->at_path("name").as_string())
+                {
+                    if (!(*name)->empty())
+                    {
+                        LOG(" - %s - %s", modName.c_str(), (*name)->c_str())
+                        modNames.insert(**name);
+                    }
+                }
 
                 if (toml::value<std::string>* include = includeTable->at_path("include").as_string())
                 {
