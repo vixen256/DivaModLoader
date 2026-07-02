@@ -23,6 +23,8 @@
 #include <set>
 
 #include <Helpers.h>
+
+#define TOML_ENABLE_UNRELEASED_FEATURES 1
 #include <toml.hpp>
 
 #undef _ITERATOR_DEBUG_LEVEL

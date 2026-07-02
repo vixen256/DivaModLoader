@@ -110,6 +110,9 @@ void ModLoader::initMod(const std::filesystem::path& path)
 
                         if (modNames.find(**name) == modNames.end())
                         {
+                            const std::string includeName = modName + " - " + includeTable->at_path("name").value_or(includeTable->at_path("include").as_string()->value_or("Unknown"));
+                            const std::wstring msg = L"Failed to load \"" + std::wstring(includeName.begin(), includeName.end()) + L"\"\n" + L"Could not find dependency \"" + std::wstring((*name)->begin(), (*name)->end()) + L"\"";
+                            MessageBoxW(nullptr, msg.c_str(), L"DIVA Mod Loader", MB_OK);
                             enabled = false;
                             break;
                         }
@@ -126,6 +129,9 @@ void ModLoader::initMod(const std::filesystem::path& path)
 
                         if (modNames.find(**name) != modNames.end())
                         {
+                            const std::string includeName = modName + " - " + includeTable->at_path("name").value_or(includeTable->at_path("include").as_string()->value_or("Unknown"));
+                            const std::wstring msg = L"Failed to load \"" + std::wstring(includeName.begin(), includeName.end()) + L"\"\n" + L"Found conflict \"" + std::wstring((*name)->begin(), (*name)->end()) + L"\"";
+                            MessageBoxW(nullptr, msg.c_str(), L"DIVA Mod Loader", MB_OK);
                             enabled = false;
                             break;
                         }
