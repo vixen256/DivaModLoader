@@ -48,11 +48,11 @@ VTABLE_HOOK(HRESULT, WINAPI, IDXGISwapChain, Present, UINT SyncInterval, UINT Fl
         }
         catch (std::exception& e)
         {
-            LOG("%ls - %s", getRelativePath(dllFilePath).c_str(), e.what())
+            LOG("%s", e.what())
         }
         catch (...)
         {
-            LOG("%ls - Unknown exception", getRelativePath(dllFilePath).c_str())
+            LOG("Unknown exception")
         }
     }
 
