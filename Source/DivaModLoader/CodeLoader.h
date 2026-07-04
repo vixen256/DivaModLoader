@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "Context.h"
+
 typedef void InitEvent();
 typedef void D3DInitEvent(IDXGISwapChain*, ID3D11Device*, ID3D11DeviceContext*);
 typedef void OnFrameEvent(IDXGISwapChain*);
@@ -8,6 +10,7 @@ template<typename T>
 struct EventPair
 {
     std::wstring directoryPath;
+    std::wstring dllName;
     T* event;
 
     template<typename... Args>
@@ -16,7 +19,18 @@ struct EventPair
         SetCurrentDirectoryW(directoryPath.c_str());
         SetDllDirectoryW(directoryPath.c_str());
 
-        event(args...);
+        try
+        {
+            event(args...);
+        }
+        catch (std::exception& e)
+        {
+            LOG("%ls - %s", dllName.c_str(), e.what())
+        }
+        catch (...)
+        {
+            LOG("%ls - Unknown exception", dllName.c_str())
+        }
     }
 };
 

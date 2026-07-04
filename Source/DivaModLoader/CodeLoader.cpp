@@ -41,7 +41,20 @@ std::vector<OnFrameEvent*> CodeLoader::onResizeEvents;
 VTABLE_HOOK(HRESULT, WINAPI, IDXGISwapChain, Present, UINT SyncInterval, UINT Flags)
 {
     for (auto& onFrameEvent : CodeLoader::onFrameEvents)
-        onFrameEvent(This);
+    {
+        try
+        {
+            onFrameEvent(This);
+        }
+        catch (std::exception& e)
+        {
+            LOG("%ls - %s", getRelativePath(dllFilePath).c_str(), e.what())
+        }
+        catch (...)
+        {
+            LOG("%ls - Unknown exception", getRelativePath(dllFilePath).c_str())
+        }
+    }
 
     return originalIDXGISwapChainPresent(This, SyncInterval, Flags);
 }
@@ -51,7 +64,20 @@ VTABLE_HOOK(HRESULT, WINAPI, IDXGISwapChain, ResizeBuffers, UINT BufferCount, UI
     HRESULT res = originalIDXGISwapChainResizeBuffers(This, BufferCount, Width, Height, NewFormat, SwapChainFlags);
 
     for (auto& onResizeEvent : CodeLoader::onResizeEvents)
-        onResizeEvent(This);
+    {
+        try
+        {
+            onResizeEvent(This);
+        }
+        catch (std::exception& e)
+        {
+            LOG("%s", e.what())
+        }
+        catch (...)
+        {
+            LOG("Unknown exception")
+        }
+    }
 
     return res;
 }
@@ -157,7 +183,20 @@ void CodeLoader::init()
             const FARPROC preInitEvent = GetProcAddress(module, preInitFuncName);
 
             if (preInitEvent)
-                ((InitEvent*)preInitEvent)();
+            {
+                try
+                {
+                    ((InitEvent*)preInitEvent)();
+                }
+                catch (std::exception& e)
+                {
+                    LOG("%ls - %s", getRelativePath(dllFilePath).c_str(), e.what())
+                }
+                catch (...)
+                {
+                    LOG("%ls - Unknown exception", getRelativePath(dllFilePath).c_str())
+                }
+            }
         }
 
         for (auto& initFuncName : INIT_FUNC_NAMES)
@@ -165,7 +204,7 @@ void CodeLoader::init()
             const FARPROC initEvent = GetProcAddress(module, initFuncName);
 
             if (initEvent)
-                initEvents.push_back({ directoryPath, (InitEvent*)initEvent });
+                initEvents.push_back({ directoryPath, getRelativePath(dllFilePath), (InitEvent*)initEvent });
         }
 
         for (auto& postInitFuncName : POST_INIT_FUNC_NAMES)
@@ -173,7 +212,7 @@ void CodeLoader::init()
             const FARPROC postInitEvent = GetProcAddress(module, postInitFuncName);
 
             if (postInitEvent)
-                postInitEvents.push_back({ directoryPath, (InitEvent*)postInitEvent });
+                postInitEvents.push_back({ directoryPath, getRelativePath(dllFilePath), (InitEvent*)postInitEvent });
         }
 
         for (auto& d3dInitFuncName : D3D_INIT_FUNC_NAMES)
@@ -181,7 +220,7 @@ void CodeLoader::init()
             const FARPROC d3dInitEvent = GetProcAddress(module, d3dInitFuncName);
 
             if (d3dInitEvent)
-                d3dInitEvents.push_back({ directoryPath, (D3DInitEvent*)d3dInitEvent });
+                d3dInitEvents.push_back({ directoryPath, getRelativePath(dllFilePath), (D3DInitEvent*)d3dInitEvent });
         }
 
         for (auto& onFrameFuncName : ON_FRAME_FUNC_NAMES)

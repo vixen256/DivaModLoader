@@ -142,24 +142,15 @@ void ModLoader::initMod(const std::filesystem::path& path)
                     continue;
 
                 if (toml::value<std::string>* name = includeTable->at_path("name").as_string())
-                {
                     if (!(*name)->empty())
-                    {
                         LOG(" - %s - %s", modName.c_str(), (*name)->c_str())
-                        modNames.insert(**name);
-                    }
-                }
 
                 if (toml::value<std::string>* include = includeTable->at_path("include").as_string())
-                {
                     if (!(*include)->empty())
                         modDirectoryPaths.push_back(modDirectoryPath + "\\" + **include);
-                }
                 else if (toml::array* arr = includeTable->at_path("include").as_array())
-                {
                     for (size_t i = arr->size() - 1; i != -1; i--)
                         nodes.push_back(arr->at(i));
-                }
             }
         }
     }
