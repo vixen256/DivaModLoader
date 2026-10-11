@@ -200,10 +200,7 @@ HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, sigItemTableHandlerArrayLoad()
         memset(farc, 0, 0x60);
         farcParse(farc, asyncFileGetData(&*it), asyncFileGetSize(&*it));
         farcs.push_back(farc);
-
-        freeAsyncFileHandler(&*it);
     }
-    itmFileHandlers.clear();
 
     for (int i = 0; i < 10; i++)
     {
@@ -245,6 +242,12 @@ HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, sigItemTableHandlerArrayLoad()
         operatorDelete(*it);
     }
     farcs.clear();
+
+    for (auto it = itmFileHandlers.begin(); it != itmFileHandlers.end(); ++it)
+    {
+        freeAsyncFileHandler(&*it);
+    }
+    itmFileHandlers.clear();
 
     return false;
 }
