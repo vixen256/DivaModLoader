@@ -1,6 +1,7 @@
 ﻿#include "DatabaseLoader.h"
 
 #include "Context.h"
+#include "FileLoader.h""
 #include "ModLoader.h"
 #include "SigScan.h"
 #include "Types.h"
@@ -106,21 +107,63 @@ HOOK(size_t, __fastcall, ResolveFilePath, readInstrPtr(sigResolveFilePath(), 0, 
     return result;
 }
 
-// both PvLoader and this now have these function ptrs, idk, put them in a header file?
-static FUNCTION_PTR(bool, __fastcall, asyncFileLoad, 0x1402A4710, void** fileHandler, const char* file, int);
-static FUNCTION_PTR(bool, __fastcall, asyncFileLoading, 0x151C03830, void** fileHandler);
-static FUNCTION_PTR(const void*, __fastcall, asyncFileGetData, 0x151C0EF70, void** fileHandler);
-static FUNCTION_PTR(size_t, __fastcall, asyncFileGetSize, 0x151C7ADA0, void** fileHandler);
-static FUNCTION_PTR(void, __fastcall, freeAsyncFileHandler, 0x1402A4E90, void** fileHandler);
-static FUNCTION_PTR(void, __fastcall, farcParse, 0x1402A0750, void *farc, const void *data, uint64_t size);
-static FUNCTION_PTR(void, __fastcall, farcGetFile, 0x1402A1020, void *farc, void *buffer, uint64_t size, int fileIndex);
-static FUNCTION_PTR(void, __fastcall, freeFarc, 0x1402A0E00, void *farc);
-static FUNCTION_PTR(void, __fastcall, itemTableHandlerParse, 0x1404E8690, void* itemTable, void** fileHandler);
+SIG_SCAN
+(
+    sigFarcParse,
+    0x1402A0750,
+    "\x48\x89\xCC\x24\xCC\x48\x89\xCC\x24\xCC\x55\x57\x41\x54\x41\x56\x41\x57\x48\x8D\xCC\x24\xCC\x48\x81\xEC\x20\x01\x00\x00\x48\x8B\x05\xCC\xCC\xCC\xCC\x48\x33\xC4\x48\x89\x45\x10\x49",
+    "xx?x?xx?x?xxxxxxxxxx?x?xxxxxxxxxx????xxxxxxxx"
+);
+
+SIG_SCAN
+(
+    sigFarcGetFile,
+    0x1402A1020,
+    "\x48\x89\xCC\x24\xCC\x55\x56\x57\x41\x54\x41\x55\x41\x56\x41\x57\x48\x8D\xCC\x24\xCC\x48\x81\xEC\xB0\x00\x00\x00\x48\x8B\x05\xCC\xCC\xCC\xCC\x48\x33\xC4\x48\x89\x45\x17\x45",
+    "xx?x?xxxxxxxxxxxxx?x?xxxxxxxxxx????xxxxxxxx"
+);
+
+SIG_SCAN
+(
+    sigFreeFarc,
+    0x1402A0E00,
+    "\x48\x89\xCC\x24\xCC\x48\x89\xCC\x24\xCC\x57\x48\x83\xEC\x20\x48\x8B\xCC\x33\xCC\x48\x89\xCC\x48\x89\xCC\x08\x89\xCC\x10\x0F",
+    "xx?x?xx?x?xxxxxxx?x?xx?xx?xx?xx"
+);
+
+SIG_SCAN
+(
+    sigItemTableHandlerParse,
+    0x1404E8690,
+    "\x40\x53\x48\x83\xEC\x70\x48\x8B\x05\xCC\xCC\xCC\xCC\x48\x33\xC4\x48\x89\x44\x24\xCC\x48\x8B\xCC\x0F",
+    "xxxxxxxxx????xxxxxxx?xx?x"
+);
+
+SIG_SCAN
+(
+    sigItemTableHandlerArrayRead,
+    0x158339FF0,
+    "\x48\x89\xCC\x24\xCC\x57\x48\x83\xEC\x20\x48\x8D\xCC\xCC\xCC\xCC\xCC\xBF\x0A\x00\x00\x00\x48\x89",
+    "xx?x?xxxxxxx?????xxxxxxx"
+);
+
+SIG_SCAN
+(
+    sigItemTableHandlerArrayLoad,
+    0x1404E7E60,
+    "\x48\x89\xCC\x24\xCC\x48\x89\xCC\x24\xCC\x57\x48\x83\xEC\x20\x40\x32\xCC\x48\x8D\xCC\xCC\xCC\xCC\xCC\xBE",
+    "xx?x?xx?x?xxxxxxx?xx?????x"
+);
+
+static FUNCTION_PTR(void, __fastcall, farcParse, sigFarcParse(), void *farc, const void *data, uint64_t size);
+static FUNCTION_PTR(void, __fastcall, farcGetFile, sigFarcGetFile(), void *farc, void *buffer, uint64_t size, int fileIndex);
+static FUNCTION_PTR(void, __fastcall, freeFarc, sigFreeFarc(), void *farc);
+static FUNCTION_PTR(void, __fastcall, itemTableHandlerParse, sigItemTableHandlerParse(), void* itemTable, void** fileHandler);
 
 std::vector<void*> itmFileHandlers;
 prj::list<prj::string>* mdataPrefixes = nullptr;
 
-HOOK (void, __fastcall, ItemTableHandlerArrayRead, 0x158339FF0)
+HOOK (void, __fastcall, ItemTableHandlerArrayRead, sigItemTableHandlerArrayRead())
 {
     for (auto it = mdataPrefixes->begin(); it != mdataPrefixes->end(); ++it)
     {
@@ -144,7 +187,7 @@ struct FarcFile {
     int flags;
 };
 
-HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, 0x1404E7E60)
+HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, sigItemTableHandlerArrayLoad())
 {
     for (auto it = itmFileHandlers.begin (); it != itmFileHandlers.end (); ++it)
         if (asyncFileLoading (&*it))
@@ -164,7 +207,7 @@ HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, 0x1404E7E60)
 
     for (int i = 0; i < 10; i++)
     {
-        auto ptr = 0x14175B620 + 0x108 * i;
+        auto ptr = readInstrPtr(sigItemTableHandlerArrayLoad(), 0x12, 0x7) + 0x108 * i;
         for (auto it = farcs.begin (); it != farcs.end (); ++it)
         {
             void* buf  = nullptr;

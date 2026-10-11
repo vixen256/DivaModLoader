@@ -15,6 +15,14 @@ SIG_SCAN
     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx????xxxxxxxx"
 );
 
+SIG_SCAN
+(
+    sigModRomDirectorySkip,
+    0x1402A4450,
+    "\x48\x3B\xCC\xCC\xCC\xCC\xCC\x0F\x84\xCC\xCC\xCC\xCC\xB9",
+    "xx?????xx????x"
+);
+
 HOOK(void, __fastcall, InitRomDirectoryPaths, sigInitRomDirectoryPaths())
 {
     originalInitRomDirectoryPaths();
@@ -50,9 +58,9 @@ HOOK(void, __fastcall, InitRomDirectoryPaths, sigInitRomDirectoryPaths())
     DatabaseLoader::initMdataMgr(modRomDirectoryPaths);
 
     // Skip modRomDirectory in ResolveFilePath
-    WRITE_MEMORY(0x1402A4450, uint8_t, 0x48, 0x81, 0xC3); // add r/m64, imm32
-    WRITE_MEMORY(0x1402A4453, int32_t, modRomDirectoryPaths.size() * sizeof(prj::string));
-    WRITE_NOP(0x1402A4457, 6); // Disable JE, assume romDirs.size() is always >0
+    WRITE_MEMORY(sigModRomDirectorySkip(), uint8_t, 0x48, 0x81, 0xC3); // add r/m64, imm32
+    WRITE_MEMORY(sigModRomDirectorySkip() + 0x03, int32_t, modRomDirectoryPaths.size() * sizeof(prj::string));
+    WRITE_NOP(sigModRomDirectorySkip() + 0x07, 6); // Disable JE, assume romDirs.size() is always >0
 }
 
 std::vector<std::string> ModLoader::modDirectoryPaths;

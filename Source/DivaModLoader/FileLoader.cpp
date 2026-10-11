@@ -3,6 +3,46 @@
 #include "Allocator.h"
 #include "SigScan.h"
 
+SIG_SCAN
+(
+    sigAsyncFileLoad,
+    0x1402A4710,
+    "\x48\x83\xEC\x38\x45\x8B\xC8\xC6",
+    "xxxxxxxx"
+);
+
+SIG_SCAN
+(
+    sigAsyncFileLoading,
+    0x151C03830,
+    "\x48\x8B\x01\x48\x85\xC0\x74\x16",
+    "xxxxxxxx"
+);
+
+SIG_SCAN
+(
+    sigAsyncFileGetData,
+    0x151C0EF70,
+    "\x48\x8B\x01\x48\x85\xC0\x74\x0E\x80\x78\x58\x00\x75\x08\x48\x8B\x80\xE0",
+    "xxxxxxxxxxxxxxxxxx"
+);
+
+SIG_SCAN
+(
+    sigAsyncFileGetSize,
+    0x151C7ADA0,
+    "\x48\x8B\x01\x48\x85\xC0\x74\x0E\x80\x78\x58\x00\x75\x08\x48\x8B\x80\xD8",
+    "xxxxxxxxxxxxxxxxxx"
+);
+
+SIG_SCAN
+(
+    sigFreeAsyncFileHandler,
+    0x1402A4E90,
+    "\x40\x56\x48\x83\xEC\x20\x48\x83\x39",
+    "xxxxxxxxx"
+);
+
 // This piece of code here only applies to 1.01. For some reason, not all TXT files can be loaded
 // outside CPKs in this version, so we need to do it manually.
 
