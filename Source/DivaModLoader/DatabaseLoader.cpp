@@ -1,7 +1,7 @@
 ﻿#include "DatabaseLoader.h"
 
 #include "Context.h"
-#include "FileLoader.h""
+#include "FileLoader.h"
 #include "ModLoader.h"
 #include "SigScan.h"
 #include "Types.h"
@@ -207,7 +207,7 @@ HOOK(bool, __fastcall, ItemTableHandlerArrayLoad, sigItemTableHandlerArrayLoad()
 
     for (int i = 0; i < 10; i++)
     {
-        auto ptr = readInstrPtr(sigItemTableHandlerArrayLoad(), 0x12, 0x7) + 0x108 * i;
+        auto ptr = (uint64_t)readInstrPtr(sigItemTableHandlerArrayLoad(), 0x12, 0x7) + 0x108 * i;
         for (auto it = farcs.begin (); it != farcs.end (); ++it)
         {
             void* buf  = nullptr;

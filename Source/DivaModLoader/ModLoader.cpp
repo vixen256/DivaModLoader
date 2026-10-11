@@ -59,8 +59,8 @@ HOOK(void, __fastcall, InitRomDirectoryPaths, sigInitRomDirectoryPaths())
 
     // Skip modRomDirectory in ResolveFilePath
     WRITE_MEMORY(sigModRomDirectorySkip(), uint8_t, 0x48, 0x81, 0xC3); // add r/m64, imm32
-    WRITE_MEMORY(sigModRomDirectorySkip() + 0x03, int32_t, modRomDirectoryPaths.size() * sizeof(prj::string));
-    WRITE_NOP(sigModRomDirectorySkip() + 0x07, 6); // Disable JE, assume romDirs.size() is always >0
+    WRITE_MEMORY((uint64_t)sigModRomDirectorySkip() + 0x03, int32_t, modRomDirectoryPaths.size() * sizeof(prj::string));
+    WRITE_NOP((uint64_t)sigModRomDirectorySkip() + 0x07, 6); // Disable JE, assume romDirs.size() is always >0
 }
 
 std::vector<std::string> ModLoader::modDirectoryPaths;
