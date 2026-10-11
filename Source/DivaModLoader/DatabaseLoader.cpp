@@ -18,6 +18,9 @@ constexpr char MAGIC = 0x01;
 
 std::unordered_map<prj::string, std::optional<prj::string>> filePathCache;
 
+// Normally when lookup for a given file the game searches for it in every rom directory
+// Instead we cache all files in mods at init and lookup in the cache first and make the game skip mod dirs
+// This means that for a file such as mikitm001 the game doesnt waste time `stat`ing all mods for it
 void loadFilePathCacheSubDirs(std::string modRomDirectory) {
     for (const auto& file : std::filesystem::recursive_directory_iterator(modRomDirectory))
     {
@@ -163,6 +166,8 @@ static FUNCTION_PTR(void, __fastcall, itemTableHandlerParse, sigItemTableHandler
 std::vector<void*> itmFileHandlers;
 prj::list<prj::string>* mdataPrefixes = nullptr;
 
+// Normaly MM+ reads and frees each chritmprop farc 10 times to get each itm table inside it
+// This fixes that and makes the game only read each once
 HOOK (void, __fastcall, ItemTableHandlerArrayRead, sigItemTableHandlerArrayRead())
 {
     for (auto it = mdataPrefixes->begin(); it != mdataPrefixes->end(); ++it)

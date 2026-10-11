@@ -57,7 +57,7 @@ HOOK(void, __fastcall, InitRomDirectoryPaths, sigInitRomDirectoryPaths())
     // Initialize mount data manager prefixes for mod databases.
     DatabaseLoader::initMdataMgr(modRomDirectoryPaths);
 
-    // Skip modRomDirectory in ResolveFilePath
+    // Skip modRomDirectoryPaths in ResolveFilePath as we resolve them in the hook in DatabaseLoader
     WRITE_MEMORY(sigModRomDirectorySkip(), uint8_t, 0x48, 0x81, 0xC3); // add r/m64, imm32
     WRITE_MEMORY((uint64_t)sigModRomDirectorySkip() + 0x03, int32_t, modRomDirectoryPaths.size() * sizeof(prj::string));
     WRITE_NOP((uint64_t)sigModRomDirectorySkip() + 0x07, 6); // Disable JE, assume romDirs.size() is always >0

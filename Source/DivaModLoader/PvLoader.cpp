@@ -13,6 +13,8 @@ SIG_SCAN
 
 std::list<void*> fileHandlers;
 
+// By default MM+ only reads one pv_db at a time and spends several frames doing nothing
+// This reads all of them at once and gets rid of the frames where its doing nothing
 HOOK(bool, __fastcall, TaskPvDbLoop, sigTaskPvDbLoop(), uint64_t task)
 {
     auto state = (int*)(task + 0x68);
